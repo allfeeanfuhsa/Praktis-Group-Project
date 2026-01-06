@@ -1,0 +1,65 @@
+/* src/assets/css/Login.css */
+
+/* Kita ganti 'body' jadi .login-wrapper agar tidak merusak halaman lain */
+.login-wrapper {
+    font-family: 'Poppins', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    width: 100%;
+}
+
+/* --- BAGIAN KIRI (GAMBAR/HERO) --- */
+.login-left {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.92), rgba(4, 29, 83, 0.95)), 
+                url('https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=2070&auto=format&fit=crop');
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+}
+
+.login-brand-content {
+    text-align: center;
+    padding: 3rem;
+    max-width: 750px;
+}
+
+.brand-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    letter-spacing: -1px;
+}
+
+.brand-desc {
+    font-size: 1.1rem;
+    font-weight: 300;
+    opacity: 0.9;
+    line-height: 1.8;
+}
+
+/* --- BAGIAN KANAN (FORM) --- */
+.login-right {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 2rem;
+}
+
+/* Perbaikan sedikit pada form control agar rapi */
+.form-control {
+    padding: 0.8rem 1rem;
+    font-size: 0.95rem;
+    border-radius: 8px;
+}

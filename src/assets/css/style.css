@@ -1,0 +1,156 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f4f6f9;
+    overflow-x: hidden; /* Hilangkan scroll samping */
+}
+
+/* WRAPPER UTAMA: Ini yang bikin Sidebar & Konten Sebelahan */
+.d-flex#wrapper {
+    overflow-x: hidden;
+    width: 100%;
+}
+
+/* SIDEBAR STYLE */
+#sidebar-wrapper {
+    min-height: 100vh;
+    margin-left: -15rem;
+    transition: margin .25s ease-out;
+    background-color: #fff;
+    border-right: 1px solid #dee2e6;
+}
+
+#sidebar-wrapper .sidebar-heading {
+    padding: 1.2rem 1.25rem; /* Padding Header Sidebar */
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #0d6efd;
+    border-bottom: 1px solid #dee2e6;
+}
+
+#sidebar-wrapper .list-group {
+    width: 15rem;
+}
+
+#sidebar-wrapper .list-group-item {
+    border: none;
+    padding: 1rem 1.25rem;
+    font-size: 0.95rem;
+    color: #555;
+}
+
+#sidebar-wrapper .list-group-item:hover {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+}
+
+#sidebar-wrapper .list-group-item.active {
+    background-color: #eef2ff;
+    color: #0d6efd;
+    font-weight: 600;
+    border-left: 4px solid #0d6efd;
+}
+/* Sidebar Layout Styles */
+#wrapper {
+    overflow-x: hidden;
+    display: flex; /* Kunci agar sidebar & konten sejajar */
+}
+
+#sidebar-wrapper {
+    min-height: 100vh;
+    margin-left: -15rem;
+    -webkit-transition: margin .25s ease-out;
+    -moz-transition: margin .25s ease-out;
+    -o-transition: margin .25s ease-out;
+    transition: margin .25s ease-out;
+    border-right: 1px solid #dee2e6; /* Garis pemisah */
+    width: 15rem; /* Lebar Sidebar */
+}
+
+#sidebar-wrapper .sidebar-heading {
+    padding: 0.875rem 1.25rem;
+    font-size: 1.2rem;
+}
+
+#sidebar-wrapper .list-group {
+    width: 15rem;
+}
+
+#page-content-wrapper {
+    width: 100%;
+    /* Supaya konten tidak ketutup header fixed */
+    padding-top: 20px; 
+}
+
+/* Toggled State (Untuk Mobile/Desktop) */
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: 0;
+}
+
+/* Responsive (Desktop Tampil Terus) */
+@media (min-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: 0;
+    }
+
+    #page-content-wrapper {
+        min-width: 0;
+        width: 100%;
+    }
+
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: -15rem;
+    }
+}
+
+/* Warna Active Menu (Bootstrap defaultnya biru tua, kita sesuaikan) */
+.list-group-item.active {
+    background-color: transparent !important; /* Biar transparan seperti desain PHP */
+    color: #0d6efd !important; /* Warna teks biru primary */
+    font-weight: bold;
+    border: none;
+}
+/* KONTEN PAGE STYLE */
+#page-content-wrapper {
+    min-width: 100vw;
+}
+
+/* RESPONSIVE: Di Layar Besar, Tampilkan Sidebar */
+@media (min-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: 0;
+    }
+    #page-content-wrapper {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+/* UTILITIES */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+}
+/* Update logika Toggle untuk Layout React kita */
+
+/* Default: Sidebar terlihat di Desktop, tersembunyi di Mobile */
+/* (Style sebelumnya sudah oke, tapi pastikan ini ada) */
+
+@media (max-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: -15rem; /* Sembunyi di HP */
+    }
+    
+    /* Kalau class 'toggled' aktif, sidebar muncul */
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: 0; 
+    }
+}
+
+/* Logic React Toggling */
+/* Kita pakai class .toggled pada #wrapper yang diatur via useState */
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: 0; /* Munculkan sidebar */
+}
