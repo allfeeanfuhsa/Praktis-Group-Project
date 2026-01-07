@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Praktis-Group-Project
 Update:
 - All frontend aspects are moved into client/ directory
@@ -9,4 +8,3 @@ What we do next:
 2. Integrate backend with the frontend
 3. Deploy on a web hosting provider
 4. Testing
->>>>>>> c1cc497bff45ae57331d34da457e92b92958d259
