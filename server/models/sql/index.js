@@ -1,27 +1,54 @@
-// server/models/sql/index.js
+// server/models/sql/index.js (UPDATED)
 const sequelize = require('../../config/db.sql');
 
+// Import All Models
 const User = require('./User');
 const Role = require('./Role');
 const UserRole = require('./UserRole');
+const Praktikum = require('./Praktikum');
+const PraktikumUserRole = require('./PraktikumUserRole');
+const Pertemuan = require('./Pertemuan');
 
-// Define Associations
-// The foreignKey types are inferred from the models, so they will now correctly be BIGINT and TINYINT
-User.belongsToMany(Role, { 
-  through: UserRole, 
-  foreignKey: 'id_user', 
-  otherKey: 'id_role' 
-});
+// --- NEW IMPORTS ---
+const Presensi = require('./Presensi');
+const PresensiStatus = require('./PresensiStatus');
 
-Role.belongsToMany(User, { 
-  through: UserRole, 
-  foreignKey: 'id_role', 
-  otherKey: 'id_user' 
-});
+// 1. Global User Roles
+User.belongsToMany(Role, { through: UserRole, foreignKey: 'id_user', otherKey: 'id_role' });
+Role.belongsToMany(User, { through: UserRole, foreignKey: 'id_role', otherKey: 'id_user' });
+
+// 2. Class Enrollment
+User.belongsToMany(Praktikum, { through: PraktikumUserRole, foreignKey: 'id_user', otherKey: 'id_praktikum' });
+Praktikum.belongsToMany(User, { through: PraktikumUserRole, foreignKey: 'id_praktikum', otherKey: 'id_user' });
+PraktikumUserRole.belongsTo(Role, { foreignKey: 'id_role' });
+PraktikumUserRole.belongsTo(User, { foreignKey: 'id_user' });
+
+// 3. Sessions
+Praktikum.hasMany(Pertemuan, { foreignKey: 'id_praktikum' });
+Pertemuan.belongsTo(Praktikum, { foreignKey: 'id_praktikum' });
+
+// --- NEW ASSOCIATIONS (ATTENDANCE) ---
+// A Session has many Attendance records
+Pertemuan.hasMany(Presensi, { foreignKey: 'id_pertemuan' });
+Presensi.belongsTo(Pertemuan, { foreignKey: 'id_pertemuan' });
+
+// A User has many Attendance records
+User.hasMany(Presensi, { foreignKey: 'id_user' });
+Presensi.belongsTo(User, { foreignKey: 'id_user' });
+
+// A Status (Hadir/Alpha) has many records
+PresensiStatus.hasMany(Presensi, { foreignKey: 'id_status' });
+Presensi.belongsTo(PresensiStatus, { foreignKey: 'id_status' });
 
 module.exports = {
   sequelize,
   User,
   Role,
-  UserRole
+  UserRole,
+  Praktikum,
+  PraktikumUserRole,
+  Pertemuan,
+  // Export new models
+  Presensi,
+  PresensiStatus
 };

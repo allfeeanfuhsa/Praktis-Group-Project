@@ -1,8 +1,14 @@
 // server/config/env.js
 require('dotenv').config();
 
-// Simple validation to ensure critical vars exist
-const requiredVars = ['MONGO_URI', 'MYSQL_HOST'];
+// DEBUGGING: Print loaded variables to the terminal
+console.log("--- DEBUG ENV VARS ---");
+console.log("PORT:", process.env.PORT);
+console.log("JWT_SECRET:", process.env.JWT_SECRET ? "Exists (Safe to show)" : "❌ UNDEFINED");
+console.log("----------------------");
+
+const requiredVars = ['MONGO_URI', 'MYSQL_HOST', 'JWT_SECRET']; // <--- Added JWT_SECRET here
+
 requiredVars.forEach((key) => {
   if (!process.env[key]) {
     throw new Error(`⚠️  Missing required environment variable: ${key}`);
@@ -24,6 +30,8 @@ const env = {
   mongo: {
     uri: process.env.MONGO_URI,
   },
+  
+  jwtSecret: process.env.JWT_SECRET,
 };
 
 module.exports = env;

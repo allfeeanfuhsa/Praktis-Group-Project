@@ -8,6 +8,14 @@ const env = require('./config/env');
 const sequelize = require('./config/db.sql');
 const connectMongo = require('./config/db.mongo');
 
+const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+const praktikumRoutes = require('./routes/praktikumRoutes');
+const contentRoutes = require('./routes/contentRoutes');
+const submissionRoutes = require('./routes/submissionRoutes');
+const userRoutes = require('./routes/userRoutes');
+const errorHandler = require('./middleware/errorHandler');
+
 // Initialize App
 const app = express();
 
@@ -20,6 +28,16 @@ app.use(express.json());
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/praktikum', praktikumRoutes);
+app.use('/api/content', contentRoutes);
+app.use('/api/submission', submissionRoutes);
+app.use('/api/users', userRoutes);
+
+app.use(errorHandler)
 
 // START SERVER
 const startServer = async () => {
