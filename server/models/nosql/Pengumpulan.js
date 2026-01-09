@@ -1,35 +1,49 @@
-// server/models/nosql/Pengumpulan.js
 const mongoose = require('mongoose');
 
 const PengumpulanSchema = new mongoose.Schema({
   tugas_id: { 
     type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Tugas', 
+    ref: 'Tugas',
     required: true,
     index: true
   },
+  
   student_id: { 
-    type: Number, // SQL User ID
+    type: Number, 
     required: true,
-    index: true 
+    index: true
   },
-  // We store file metadata here
+  
   file: {
-    filename: String,
-    path: String,
+    filename: { type: String, required: true },
+    path: { type: String, required: true },
     mimetype: String,
     size: Number
   },
-  // Grading fields (Initially null)
-  nilai: { type: Number, default: null },
-  feedback: { type: String, default: null },
+  
   status: { 
     type: String, 
     enum: ['diserahkan', 'dinilai', 'terlambat'],
-    default: 'diserahkan' 
-  }
+    default: 'diserahkan'
+  },
+  
+  nilai: { 
+    type: Number,
+    min: 0,
+    max: 100
+  },
+  
+  feedback: String,
+  
+  submitted_at: { type: Date, default: Date.now },
+  graded_by: Number,
+  graded_at: Date
+  
 }, { 
-  timestamps: { createdAt: 'waktu_pengumpulan', updatedAt: 'updated_at' } 
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
 });
+
+// Compound index to prevent duplicate submissions
+PengumpulanSchema.index({ tugas_id: 1, student_id: 1 }, { unique: true });
 
 module.exports = mongoose.model('Pengumpulan', PengumpulanSchema);

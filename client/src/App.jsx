@@ -1,17 +1,18 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 
-// --- 1. IMPORT PAGES (HALAMAN ASLI) ---
+// Pages
 import Login from './pages/auth/Login'; 
-import DashboardAdmin from './pages/admin/Dashboard'; // <-- INI BARU (Dashboard Admin Asli)
+import RoleSelection from './pages/auth/RoleSelection'; // Imported correctly
+
+// Admin Pages & Layouts
+import LayoutAdmin from './layouts/LayoutAdmin';
+import DashboardAdmin from './pages/admin/Dashboard';
 import VerifikasiAsdos from './pages/admin/VerifikasiAsdos';
-// --- 2. IMPORT LAYOUTS (WADAH UTAMA) ---
-import LayoutAdmin from './layouts/LayoutAdmin'; // <-- Layout Admin
-import LayoutAsdos from './layouts/LayoutAsdos'; // Layout Asdos
-import LayoutMhs from './layouts/LayoutMhs';     // Layout Mahasiswa
 
-
-// --- 3. DASHBOARD ---
+// Asdos Pages & Layouts
+import LayoutAsdos from './layouts/LayoutAsdos';
 import DashboardAsdos from './pages/asdos/Dashboard';
 import JadwalAsdos from './pages/asdos/Jadwal'; 
 import JadwalInput from './pages/asdos/JadwalInput';
@@ -21,70 +22,83 @@ import TugasAsdos from './pages/asdos/Tugas';
 import TugasInput from './pages/asdos/TugasInput';
 import PenilaianAsdos from './pages/asdos/Penilaian';
 
+// Mahasiswa Pages & Layouts
+import LayoutMhs from './layouts/LayoutMhs';
 import DashboardMhs from './pages/mahasiswa/Dashboard';
 import JadwalMhs from './pages/mahasiswa/Jadwal';
 import MateriMhs from './pages/mahasiswa/Materi';
 import TugasMhs from './pages/mahasiswa/Tugas';
 import TugasUpload from './pages/mahasiswa/TugasUpload';
+
 function App() {
   return (
-    <Router>
-      <Routes>
-        
-        {/* === RUTE 1: LOGIN (HALAMAN PERTAMA) === */}
-        <Route path="/" element={<Login />} />
-        
+    <Routes>
+      
+      {/* Public Routes */}
+      <Route path="/" element={<Login />} />
+      <Route path="/auth/login" element={<Login />} />
 
-        {/* === RUTE 2: ADMIN === */}
-        {/* Semua link yang depannya /admin akan pakai LayoutAdmin (Sidebar Admin) */}
-        <Route path="/admin" element={<LayoutAdmin />}>
-            {/* Link: /admin/dashboard */}
-            <Route path="dashboard" element={<DashboardAdmin />} />
-            
-            {/* Link: /admin/verifikasi (Masih dummy) */}
-            <Route path="verifikasi" element={<VerifikasiAsdos />} />
-        </Route>
+      {/* Role Selection - Protected so only logged-in users see it */}
+      <Route 
+        path="/auth/role-selection" 
+        element={
+          <ProtectedRoute>
+             <RoleSelection />
+          </ProtectedRoute>
+        } 
+      />
 
-
-        {/* === RUTE 3: ASDOS === */}
-        {/* Semua link yang depannya /asdos akan pakai LayoutAsdos */}
-        <Route path="/asdos" element={<LayoutAsdos />}>
-            <Route path="dashboard" element={<DashboardAsdos />} />
-            
-            {/* --- 2. TAMBAHKAN RUTE INI --- */}
-            <Route path="jadwal" element={<JadwalAsdos />} />
-            
-            <Route path="jadwal/input" element={<JadwalInput />} />
-
-            <Route path="materi" element={<MateriAsdos />} />
-
-            <Route path="materi/input" element={<MateriInput />} />
-
-            <Route path="tugas" element={<TugasAsdos />} />
-
-            <Route path="tugas/input" element={<TugasInput />} />
-
-            <Route path="penilaian" element={<PenilaianAsdos />} />
-        </Route>
+      {/* --- Admin Routes --- */}
+      <Route 
+        path="/admin" 
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <LayoutAdmin />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<DashboardAdmin />} />
+        <Route path="verifikasi" element={<VerifikasiAsdos />} />
+      </Route>
 
 
-        {/* === RUTE 4: MAHASISWA === */}
-        {/* Semua link yang depannya /mahasiswa akan pakai LayoutMhs */}
-        <Route path="/mahasiswa" element={<LayoutMhs />}>
-            {/* Menggunakan DashboardMhs yang asli sekarang */}
-            <Route path="dashboard" element={<DashboardMhs />} />
+      {/* --- Asdos Routes --- */}
+      <Route 
+        path="/asdos" 
+        element={
+          <ProtectedRoute allowedRoles={['asdos']}>
+            <LayoutAsdos />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<DashboardAsdos />} />
+        <Route path="jadwal" element={<JadwalAsdos />} />
+        <Route path="jadwal/input" element={<JadwalInput />} />
+        <Route path="materi" element={<MateriAsdos />} />
+        <Route path="materi/input" element={<MateriInput />} />
+        <Route path="tugas" element={<TugasAsdos />} />
+        <Route path="tugas/input" element={<TugasInput />} />
+        <Route path="penilaian" element={<PenilaianAsdos />} />
+      </Route>
 
-            <Route path="jadwal" element={<JadwalMhs />} />
 
-            <Route path="materi" element={<MateriMhs />} />
+      {/* --- Mahasiswa Routes --- */}
+      <Route 
+        path="/mahasiswa" 
+        element={
+          <ProtectedRoute allowedRoles={['mahasiswa']}>
+            <LayoutMhs />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<DashboardMhs />} />
+        <Route path="jadwal" element={<JadwalMhs />} />
+        <Route path="materi" element={<MateriMhs />} />
+        <Route path="tugas" element={<TugasMhs />} />
+        <Route path="tugas/upload" element={<TugasUpload />} />
+      </Route>
 
-            <Route path="tugas" element={<TugasMhs />} />
-
-            <Route path="tugas/upload" element={<TugasUpload />} />
-        </Route>
-
-      </Routes>
-    </Router>
+    </Routes>
   );
 }
 

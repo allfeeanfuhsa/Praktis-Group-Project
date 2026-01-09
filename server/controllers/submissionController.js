@@ -10,22 +10,63 @@ exports.submitWork = async (req, res) => {
     const studentId = req.user.id;
     const file = req.file;
 
-    if (!file) return res.status(400).json({ message: 'No file uploaded' });
-
-    // A. Check if Task exists
-    const task = await Tugas.findById(tugas_id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
-
-    // B. Check Deadline
-    const now = new Date();
-    if (now > task.tenggat_waktu) {
-      return res.status(400).json({ message: 'Submission deadline has passed.' });
+    // 1. Check if file was uploaded
+    if (!file) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    // C. (Optional) Check if Student is enrolled in this class via SQL
-    // skipped for brevity, but recommended for production
+    // 2. Check if task exists
+    const task = await Tugas.findById(tugas_id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
 
-    // D. Save to Mongo
+    // 3. Check if student already submitted
+    const existingSubmission = await Pengumpulan.findOne({ 
+      tugas_id, 
+      student_id: studentId 
+    });
+    
+    if (existingSubmission) {
+      return res.status(400).json({ 
+        message: 'You have already submitted this task. Please contact your instructor if you need to resubmit.' 
+      });
+    }
+
+    // 4. Check deadline (improved with timezone handling)
+    const now = new Date();
+    const deadline = new Date(task.tenggat_waktu);
+    
+    if (now > deadline) {
+      return res.status(400).json({ 
+        message: `Submission deadline has passed. Deadline was ${deadline.toLocaleString('id-ID', { 
+          dateStyle: 'full', 
+          timeStyle: 'short' 
+        })}.` 
+      });
+    }
+
+    // 5. Optional: Verify student is enrolled in this class
+    const { Pertemuan, PraktikumUserRole, Role } = require('../models/sql');
+    const session = await Pertemuan.findByPk(task.pertemuan_id);
+    
+    if (session) {
+      const enrollment = await PraktikumUserRole.findOne({
+        where: { 
+          id_user: studentId, 
+          id_praktikum: session.id_praktikum 
+        },
+        include: [{ model: Role }]
+      });
+
+      if (!enrollment || enrollment.Role.deskripsi !== 'mahasiswa') {
+        return res.status(403).json({ 
+          message: 'You are not enrolled in this class as a student' 
+        });
+      }
+    }
+
+    // 6. Create submission
     const submission = await Pengumpulan.create({
       tugas_id,
       student_id: studentId,
@@ -35,12 +76,17 @@ exports.submitWork = async (req, res) => {
         mimetype: file.mimetype,
         size: file.size
       },
-      status: 'diserahkan'
+      status: 'diserahkan',
+      submitted_at: new Date()
     });
 
-    res.status(201).json({ message: 'Submission successful', data: submission });
+    res.status(201).json({ 
+      message: 'Submission successful', 
+      data: submission 
+    });
 
   } catch (error) {
+    console.error('Submission error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -52,26 +98,70 @@ exports.gradeWork = async (req, res) => {
     const { nilai, feedback } = req.body;
     const asdosId = req.user.id;
 
-    // A. Find Submission
-    const submission = await Pengumpulan.findById(submissionId).populate('tugas_id');
-    if (!submission) return res.status(404).json({ message: 'Submission not found' });
+    // 1. Validate input
+    if (nilai === undefined || nilai === null) {
+      return res.status(400).json({ message: 'Nilai (score) is required' });
+    }
 
-    // B. HYBRID CHECK: Is this user the Asdos for this class?
-    // 1. Get Task -> Get Session -> Get SQL Praktikum ID
-    // (Wait, we stored 'pertemuan_id' in Task. We need to fetch the Session from SQL to find the Class ID)
-    // To make this faster, usually, we store 'praktikum_id' in the Task too. 
-    // But let's assume valid access for now or use the Global 'Asdos' check.
+    // Validate score range (adjust based on your grading system)
+    if (nilai < 0 || nilai > 100) {
+      return res.status(400).json({ message: 'Nilai must be between 0 and 100' });
+    }
+
+    // 2. Find submission
+    const submission = await Pengumpulan.findById(submissionId);
+    if (!submission) {
+      return res.status(404).json({ message: 'Submission not found' });
+    }
+
+    // 3. Get task details
+    const task = await Tugas.findById(submission.tugas_id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // 4. Get session to find praktikum_id
+    const { Pertemuan, PraktikumUserRole, Role } = require('../models/sql');
+    const session = await Pertemuan.findByPk(task.pertemuan_id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // 5. Verify authorization: User must be asdos of this class OR admin
+    const isAdmin = req.user.roles.includes('admin');
     
-    // C. Update Grade
+    if (!isAdmin) {
+      const enrollment = await PraktikumUserRole.findOne({
+        where: { 
+          id_user: asdosId, 
+          id_praktikum: session.id_praktikum 
+        },
+        include: [{ model: Role }]
+      });
+
+      if (!enrollment || enrollment.Role.deskripsi !== 'asdos') {
+        return res.status(403).json({ 
+          message: 'You are not authorized to grade this submission. Only the instructor of this class can grade.' 
+        });
+      }
+    }
+
+    // 6. Update the grade
     submission.nilai = nilai;
-    submission.feedback = feedback;
+    submission.feedback = feedback || '';
     submission.status = 'dinilai';
+    submission.graded_by = asdosId;
+    submission.graded_at = new Date();
     
     await submission.save();
 
-    res.json({ message: 'Grading saved', data: submission });
+    res.json({ 
+      message: 'Grading saved successfully', 
+      data: submission 
+    });
 
   } catch (error) {
+    console.error('Grading error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -84,21 +174,62 @@ exports.downloadFile = async (req, res) => {
   try {
     const { submissionId } = req.params;
     
-    // 1. Find the record
+    // 1. Find the submission
     const submission = await Pengumpulan.findById(submissionId);
-    if (!submission) return res.status(404).json({ message: 'Submission not found' });
+    if (!submission) {
+      return res.status(404).json({ message: 'Submission not found' });
+    }
 
-    // 2. Security Check (Optional but recommended)
-    // Ensure the requester is the owner OR the Asdos for that class
-    
-    // 3. Send File
+    // 2. Get the task to find pertemuan_id
+    const task = await Tugas.findById(submission.tugas_id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // 3. Get session to find praktikum_id
+    const { Pertemuan, PraktikumUserRole, Role } = require('../models/sql');
+    const session = await Pertemuan.findByPk(task.pertemuan_id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // 4. Authorization Check
+    const userId = req.user.id;
+    const isOwner = submission.student_id === userId;
+    const isAdmin = req.user.roles.includes('admin');
+
+    // Check if user is the asdos of this class
+    let isAsdos = false;
+    if (!isOwner && !isAdmin) {
+      const enrollment = await PraktikumUserRole.findOne({
+        where: { 
+          id_user: userId, 
+          id_praktikum: session.id_praktikum 
+        },
+        include: [{ model: Role }]
+      });
+      
+      isAsdos = enrollment && enrollment.Role.deskripsi === 'asdos';
+    }
+
+    // Deny access if not authorized
+    if (!isOwner && !isAsdos && !isAdmin) {
+      return res.status(403).json({ 
+        message: 'You are not authorized to download this file' 
+      });
+    }
+
+    // 5. Send the file
     const filePath = path.resolve(submission.file.path);
     if (fs.existsSync(filePath)) {
-        res.download(filePath, submission.file.filename);
+      res.download(filePath, submission.file.filename);
     } else {
-        res.status(404).json({ message: 'File not found on server' });
+      res.status(404).json({ message: 'File not found on server' });
     }
+    
   } catch (error) {
+    console.error('Download error:', error);
     res.status(500).json({ message: error.message });
   }
 };
+

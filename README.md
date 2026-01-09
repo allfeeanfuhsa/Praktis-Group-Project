@@ -8,3 +8,232 @@ What we do next:
 2. Integrate backend with the frontend
 3. Deploy on a web hosting provider
 4. Testing
+
+```
+Praktis Project
+├─ client
+│  ├─ eslint.config.js
+│  ├─ index.html
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ public
+│  │  └─ vite.svg
+│  ├─ src
+│  │  ├─ App.css
+│  │  ├─ App.jsx
+│  │  ├─ assets
+│  │  │  ├─ css
+│  │  │  │  ├─ login.css
+│  │  │  │  └─ style.css
+│  │  │  ├─ img
+│  │  │  │  └─ logo_pa.jpeg
+│  │  │  ├─ js
+│  │  │  │  └─ script.js
+│  │  │  └─ react.svg
+│  │  ├─ components
+│  │  │  ├─ footer.jsx
+│  │  │  ├─ header.jsx
+│  │  │  ├─ SidebarAdmin.jsx
+│  │  │  ├─ SidebarAsdos.jsx
+│  │  │  └─ SidebarMhs.jsx
+│  │  ├─ index.css
+│  │  ├─ layouts
+│  │  │  ├─ LayoutAdmin.jsx
+│  │  │  ├─ LayoutAsdos.jsx
+│  │  │  └─ LayoutMhs.jsx
+│  │  ├─ main.jsx
+│  │  └─ pages
+│  │     ├─ admin
+│  │     │  ├─ Dashboard.jsx
+│  │     │  └─ VerifikasiAsdos.jsx
+│  │     ├─ asdos
+│  │     │  ├─ Dashboard.jsx
+│  │     │  ├─ Jadwal.jsx
+│  │     │  ├─ JadwalInput.jsx
+│  │     │  ├─ Materi.jsx
+│  │     │  ├─ MateriInput.jsx
+│  │     │  ├─ Penilaian.jsx
+│  │     │  ├─ Tugas.jsx
+│  │     │  └─ TugasInput.jsx
+│  │     ├─ auth
+│  │     │  └─ login.jsx
+│  │     └─ mahasiswa
+│  │        ├─ Dashboard.jsx
+│  │        ├─ Jadwal.jsx
+│  │        ├─ Materi.jsx
+│  │        ├─ Tugas.jsx
+│  │        └─ TugasUpload.jsx
+│  └─ vite.config.js
+├─ README.md
+├─ server
+│  ├─ config
+│  │  ├─ db.mongo.js
+│  │  ├─ db.sql.js
+│  │  └─ env.js
+│  ├─ controllers
+│  │  ├─ authController.js
+│  │  ├─ contentController.js
+│  │  ├─ praktikumController.js
+│  │  ├─ sessionController.js
+│  │  ├─ submissionController.js
+│  │  └─ userController.js
+│  ├─ middleware
+│  │  ├─ authMiddleware.js
+│  │  ├─ enrollmentMiddleware.js
+│  │  ├─ errorHandler.js
+│  │  ├─ rbacMiddleware.js
+│  │  └─ uploadMiddleware.js
+│  ├─ models
+│  │  ├─ nosql
+│  │  │  ├─ Materi.js
+│  │  │  ├─ Pengumpulan.js
+│  │  │  └─ Tugas.js
+│  │  └─ sql
+│  │     ├─ index.js
+│  │     ├─ Pertemuan.js
+│  │     ├─ Praktikum.js
+│  │     ├─ PraktikumUserRole.js
+│  │     ├─ Presensi.js
+│  │     ├─ PresensiStatus.js
+│  │     ├─ Role.js
+│  │     ├─ User.js
+│  │     └─ UserRole.js
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ routes
+│  │  ├─ adminRoutes.js
+│  │  ├─ authRoutes.js
+│  │  ├─ contentRoutes.js
+│  │  ├─ praktikumRoutes.js
+│  │  ├─ submissionRoutes.js
+│  │  └─ userRoutes.js
+│  ├─ seed.js
+│  ├─ server.js
+│  ├─ services
+│  │  ├─ authService.js
+│  │  ├─ gradingService.js
+│  │  └─ praktikumService.js
+│  └─ utils
+│     ├─ constants.js
+│     ├─ fileHelper.js
+│     └─ responseHelper.js
+└─ treefile.txt
+
+```
+```
+Praktis Project
+├─ client
+│  ├─ eslint.config.js
+│  ├─ index.html
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ public
+│  │  └─ vite.svg
+│  ├─ src
+│  │  ├─ api
+│  │  │  └─ axiosInstance.js
+│  │  ├─ App.css
+│  │  ├─ App.jsx
+│  │  ├─ assets
+│  │  │  ├─ css
+│  │  │  │  ├─ login.css
+│  │  │  │  └─ style.css
+│  │  │  ├─ img
+│  │  │  │  └─ logo_pa.jpeg
+│  │  │  ├─ js
+│  │  │  │  └─ script.js
+│  │  │  └─ react.svg
+│  │  ├─ components
+│  │  │  ├─ footer.jsx
+│  │  │  ├─ header.jsx
+│  │  │  ├─ ProtectedRoute.jsx
+│  │  │  ├─ SidebarAdmin.jsx
+│  │  │  ├─ SidebarAsdos.jsx
+│  │  │  └─ SidebarMhs.jsx
+│  │  ├─ context
+│  │  │  └─ authContext.jsx
+│  │  ├─ index.css
+│  │  ├─ layouts
+│  │  │  ├─ LayoutAdmin.jsx
+│  │  │  ├─ LayoutAsdos.jsx
+│  │  │  └─ LayoutMhs.jsx
+│  │  ├─ main.jsx
+│  │  ├─ pages
+│  │  │  ├─ admin
+│  │  │  │  ├─ Dashboard.jsx
+│  │  │  │  └─ VerifikasiAsdos.jsx
+│  │  │  ├─ asdos
+│  │  │  │  ├─ Dashboard.jsx
+│  │  │  │  ├─ Jadwal.jsx
+│  │  │  │  ├─ JadwalInput.jsx
+│  │  │  │  ├─ Materi.jsx
+│  │  │  │  ├─ MateriInput.jsx
+│  │  │  │  ├─ Penilaian.jsx
+│  │  │  │  ├─ Tugas.jsx
+│  │  │  │  └─ TugasInput.jsx
+│  │  │  ├─ auth
+│  │  │  │  └─ Login.jsx
+│  │  │  └─ mahasiswa
+│  │  │     ├─ Dashboard.jsx
+│  │  │     ├─ Jadwal.jsx
+│  │  │     ├─ Materi.jsx
+│  │  │     ├─ Tugas.jsx
+│  │  │     └─ TugasUpload.jsx
+│  │  └─ utils
+│  │     └─ api.js
+│  └─ vite.config.js
+├─ README.md
+└─ server
+   ├─ config
+   │  ├─ db.mongo.js
+   │  ├─ db.sql.js
+   │  └─ env.js
+   ├─ controllers
+   │  ├─ authController.js
+   │  ├─ contentController.js
+   │  ├─ praktikumController.js
+   │  ├─ sessionController.js
+   │  ├─ submissionController.js
+   │  └─ userController.js
+   ├─ middleware
+   │  ├─ authMiddleware.js
+   │  ├─ enrollmentMiddleware.js
+   │  ├─ errorHandler.js
+   │  ├─ rbacMiddleware.js
+   │  └─ uploadMiddleware.js
+   ├─ models
+   │  ├─ nosql
+   │  │  ├─ Materi.js
+   │  │  ├─ Pengumpulan.js
+   │  │  └─ Tugas.js
+   │  └─ sql
+   │     ├─ index.js
+   │     ├─ Pertemuan.js
+   │     ├─ Praktikum.js
+   │     ├─ PraktikumUserRole.js
+   │     ├─ Presensi.js
+   │     ├─ PresensiStatus.js
+   │     ├─ Role.js
+   │     ├─ User.js
+   │     └─ UserRole.js
+   ├─ package-lock.json
+   ├─ package.json
+   ├─ routes
+   │  ├─ adminRoutes.js
+   │  ├─ authRoutes.js
+   │  ├─ contentRoutes.js
+   │  ├─ praktikumRoutes.js
+   │  ├─ submissionRoutes.js
+   │  └─ userRoutes.js
+   ├─ seed.js
+   ├─ server.js
+   ├─ services
+   │  ├─ authService.js
+   │  ├─ gradingService.js
+   │  └─ praktikumService.js
+   └─ utils
+      ├─ constants.js
+      ├─ fileHelper.js
+      └─ responseHelper.js
+
+```

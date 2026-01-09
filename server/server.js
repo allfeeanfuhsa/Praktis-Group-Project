@@ -14,6 +14,7 @@ const praktikumRoutes = require('./routes/praktikumRoutes');
 const contentRoutes = require('./routes/contentRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const userRoutes = require('./routes/userRoutes');
+
 const errorHandler = require('./middleware/errorHandler');
 
 // Initialize App

@@ -1,27 +1,41 @@
-// src/pages/auth/Login.jsx
+// client/src/pages/auth/Login.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom'; // Untuk pindah halaman
-import '../../assets/css/Login.css'; // Panggil CSS yang tadi dibuat
+// 1. Remove useNavigate (The context handles navigation now)
+// import { useNavigate } from 'react-router-dom'; 
+import api from '../../utils/api';
+import { useAuth } from '../../context/authContext'; // 2. Import useAuth
+import '../../assets/css/Login.css';
 import logoPA from '../../assets/img/logo_pa.jpeg';
-const Login = () => {
-    // 1. STATE: Untuk menampung apa yang diketik user
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    
-    // Tools untuk pindah halaman
-    const navigate = useNavigate();
 
-    // 2. LOGIC LOGIN (Pengganti Script JS di bawah PHP Anda)
-    const handleLogin = (e) => {
-        e.preventDefault(); // Mencegah halaman refresh
-        
-        // Logika sederhana sesuai PHP Anda:
-        // Jika username mengandung kata "mhs", lempar ke dashboard mahasiswa
-        if (username.includes('mhs')) {
-            navigate('/mahasiswa/dashboard');
-        } else {
-            // Selain itu, lempar ke dashboard asdos
-            navigate('/asdos/dashboard');
+const Login = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    
+    // 3. Get the login function from Context
+    const { login } = useAuth(); 
+
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            const response = await api.post('/api/auth/login', {
+                email,
+                password
+            });
+
+            // 4. DELEGATE EVERYTHING TO CONTEXT
+            // We pass the token and user data to the context.
+            // The context will save them and decide where to redirect (Role Selection, Admin, etc.)
+            login(response.data.token, response.data.user);
+
+        } catch (err) {
+            console.error('Login error:', err);
+            setError(err.response?.data?.message || 'Login failed. Please try again.');
+            setLoading(false); // Only stop loading on error (on success, we redirect)
         }
     };
 
@@ -29,7 +43,6 @@ const Login = () => {
         <div className="login-wrapper container-fluid g-0">
             <div className="row g-0">
                 
-                {/* Bagian Kiri (Gambar) */}
                 <div className="col-lg-7 d-none d-lg-flex login-left">
                     <div className="login-brand-content">
                         <h1 className="brand-title">Practicum Assistants</h1>
@@ -40,29 +53,33 @@ const Login = () => {
                     </div>
                 </div>
 
-                {/* Bagian Kanan (Form) */}
                 <div className="col-lg-5 login-right">
                     <div className="login-card">
                         <div className="text-center mb-5">
-                            {/* Logo sementara (Ganti src ini jika gambar error) */}
                             <img src={logoPA} alt="Logo PA" width="120" className="mb-4 rounded shadow-sm" />                               
                             <h4 className="fw-bold text-dark mb-1">Welcome Back!</h4>
                             <p className="text-muted small">Silakan login untuk melanjutkan.</p>
                         </div>
 
+                        {error && (
+                            <div className="alert alert-danger" role="alert">
+                                {error}
+                            </div>
+                        )}
+
                         <form onSubmit={handleLogin}>
                             <div className="form-floating mb-3">
                                 <input 
-                                    type="text" 
+                                    type="email" 
                                     className="form-control bg-light border-0" 
-                                    id="username" 
-                                    placeholder="NIM/Username" 
+                                    id="email" 
+                                    placeholder="name@example.com" 
                                     required
-                                    // Ambil nilai inputan user
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    disabled={loading}
                                 />
-                                <label htmlFor="username" className="text-muted">NIM / Username</label>
+                                <label htmlFor="email" className="text-muted">Email</label>
                             </div>
 
                             <div className="form-floating mb-4">
@@ -72,15 +89,19 @@ const Login = () => {
                                     id="password" 
                                     placeholder="Password" 
                                     required
-                                    // Ambil nilai password
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    disabled={loading}
                                 />
                                 <label htmlFor="password" className="text-muted">Password</label>
                             </div>
                             
-                            <button type="submit" className="btn btn-primary w-100 shadow-sm py-3">
-                                Sign In
+                            <button 
+                                type="submit" 
+                                className="btn btn-primary w-100 shadow-sm py-3"
+                                disabled={loading}
+                            >
+                                {loading ? 'Signing In...' : 'Sign In'}
                             </button>
 
                             <div className="text-center mt-4">

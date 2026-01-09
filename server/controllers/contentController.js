@@ -3,20 +3,33 @@ const Tugas = require('../models/nosql/Tugas');
 const Materi = require('../models/nosql/Materi');
 
 // 1. Create a Task
-exports.createTask = async (req, res, next) => { // Add 'next' for error handler
+exports.createTask = async (req, res, next) => {
   try {
     const { pertemuan_id, judul, deskripsi, tenggat_waktu } = req.body;
+    
+    // 🔒 ADD THIS: Validate required fields
+    if (!pertemuan_id || !judul || !tenggat_waktu) {
+      return res.status(400).json({ 
+        message: 'Missing required fields: pertemuan_id, judul, tenggat_waktu' 
+      });
+    }
+
+    // 🔒 ADD THIS: Validate deadline is in the future
+    const deadline = new Date(tenggat_waktu);
+    if (isNaN(deadline.getTime())) {
+      return res.status(400).json({ message: 'Invalid date format for tenggat_waktu' });
+    }
+    
+    if (deadline < new Date()) {
+      return res.status(400).json({ message: 'Deadline must be in the future' });
+    }
+
     const userId = req.user.id;
-
-    // --- DELETED: Manual Session Check ---
-    // --- DELETED: Manual PraktikumUserRole Check ---
-    // The middleware already guaranteed this user is the Asdos for this class!
-
     const newTask = await Tugas.create({
       pertemuan_id,
       judul,
       deskripsi,
-      tenggat_waktu,
+      tenggat_waktu: deadline,
       created_by: userId,
       attachments: [] 
     });
@@ -24,7 +37,7 @@ exports.createTask = async (req, res, next) => { // Add 'next' for error handler
     res.status(201).json({ message: 'Task created', data: newTask });
 
   } catch (error) {
-    next(error); // Use the new global error handler
+    next(error);
   }
 };
 

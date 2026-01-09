@@ -1,37 +1,43 @@
 // server/controllers/authController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Role, UserRole } = require('../models/sql');
+const { User, Role, PraktikumUserRole } = require('../models/sql'); // Import PraktikumUserRole
 const env = require('../config/env');
 
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // 1. Find User
+    // 1. Find User & Global Roles
     const user = await User.findOne({ 
         where: { email },
-        // IMPORTANT: We need to load the roles too!
         include: [{
             model: Role,
-            through: { attributes: [] } // Don't include the junction table data
+            through: { attributes: [] }
         }]
     });
 
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // 2. Check Password
     const validPass = await bcrypt.compare(password, user.password);
-    if (!validPass) {
-      return res.status(400).json({ message: 'Invalid password' });
+    if (!validPass) return res.status(400).json({ message: 'Invalid password' });
+
+    // 2. Get Global Roles (e.g., ['mahasiswa'])
+    let roles = user.Roles.map(r => r.deskripsi); 
+
+    // 3. CHECK FOR CONTEXT ROLES (The Fix!)
+    // Check if this user is an Asdos in ANY active Praktikum
+    const isAsdos = await PraktikumUserRole.findOne({
+      where: { id_user: user.id_user },
+      include: [{ model: Role, where: { deskripsi: 'asdos' } }]
+    });
+
+    // If they are found in the Praktikum table as 'asdos', ADD it to their roles
+    if (isAsdos && !roles.includes('asdos')) {
+      roles.push('asdos');
     }
 
-    // 3. Generate Token
-    // We put the User ID and their Roles into the token
-    const roles = user.Roles.map(r => r.deskripsi); // ['admin']
-    
+    // 4. Generate Token with the combined roles
     const token = jwt.sign(
       { id: user.id_user, roles: roles }, 
       env.jwtSecret, 
@@ -45,7 +51,7 @@ exports.login = async (req, res) => {
         id: user.id_user,
         nama: user.nama,
         email: user.email,
-        roles: roles
+        roles: roles // Now contains ['mahasiswa', 'asdos']
       }
     });
 
