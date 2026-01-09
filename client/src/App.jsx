@@ -9,7 +9,9 @@ import RoleSelection from './pages/auth/RoleSelection'; // Imported correctly
 // Admin Pages & Layouts
 import LayoutAdmin from './layouts/LayoutAdmin';
 import DashboardAdmin from './pages/admin/Dashboard';
-import VerifikasiAsdos from './pages/admin/VerifikasiAsdos';
+import ManajemenAsdos from './pages/admin/ManajemenAsdos';
+import ManajemenUser from './pages/admin/ManajemenUser';
+import ManajemenPraktikum from './pages/admin/ManajemenPraktikum';
 
 // Asdos Pages & Layouts
 import LayoutAsdos from './layouts/LayoutAsdos';
@@ -58,7 +60,9 @@ function App() {
         }
       >
         <Route path="dashboard" element={<DashboardAdmin />} />
-        <Route path="verifikasi" element={<VerifikasiAsdos />} />
+        <Route path="asdos-manager" element={<ManajemenAsdos />} />
+        <Route path="users" element={<ManajemenUser />} />
+        <Route path="praktikum" element={<ManajemenPraktikum />} />
       </Route>
 
 

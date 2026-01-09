@@ -1,4 +1,3 @@
-// server/models/sql/PraktikumUserRole.js
 module.exports = (sequelize, DataTypes) => {
   const PraktikumUserRole = sequelize.define('PraktikumUserRole', {
     id_user: {
@@ -16,9 +15,11 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       references: { model: 'role', key: 'id_role' }
     }
+    // ❌ REMOVED: status column block
   }, {
     tableName: 'praktikum_user_role',
     timestamps: false
   });
+
   return PraktikumUserRole;
 };

@@ -1,28 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; // Ensure axios is installed or use your api instance
+import api from '../../utils/api'; 
 
 const Dashboard = () => {
-  // 1. Setup State to store the data
   const [stats, setStats] = useState({
     totalAsdos: 0,
-    pending: 0
+    totalClasses: 0 // Renamed from 'pending'
   });
   const [loading, setLoading] = useState(true);
 
-  // 2. Fetch Data on Component Mount
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem('token');
-        
-        // Adjust URL if your server runs on a different port (e.g., localhost:5000)
-        const response = await axios.get('http://localhost:5000/api/admin/stats', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await api.get('/api/admin/stats');
 
         setStats({
           totalAsdos: response.data.totalAsdos,
-          pending: response.data.pendingVerifikasi
+          // Map the new backend field here:
+          totalClasses: response.data.totalClasses 
         });
       } catch (error) {
         console.error("Error fetching dashboard stats:", error);
@@ -43,19 +37,19 @@ const Dashboard = () => {
         {/* Kartu 1: Total Asdos */}
         <div className="col-md-4 mb-3">
           <div className="card p-3 bg-primary text-white shadow-sm border-0">
-            <h5>Total Asdos</h5>
+            <h5>Total Asdos Aktif</h5>
             <h2 className="fw-bold">
               {loading ? "..." : stats.totalAsdos}
             </h2>
           </div>
         </div>
 
-        {/* Kartu 2: Menunggu Verifikasi */}
+        {/* Kartu 2: Total Praktikum (REPLACED Pending Verifikasi) */}
         <div className="col-md-4 mb-3">
           <div className="card p-3 bg-warning text-dark shadow-sm border-0">
-            <h5>Menunggu Verifikasi</h5>
+            <h5>Total Kelas Praktikum</h5>
             <h2 className="fw-bold">
-              {loading ? "..." : stats.pending}
+              {loading ? "..." : stats.totalClasses}
             </h2>
           </div>
         </div>
