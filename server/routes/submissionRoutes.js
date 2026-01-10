@@ -54,6 +54,10 @@ router.get('/task/:taskId',
   submissionController.getSubmissionsByTask
 );
 
+router.get('/me/:taskId', submissionController.getMySubmission);
+
+router.post('/me/bulk-check', submissionController.getMySubmissionsForTasks);
+
 router.get('/download/:submissionId', submissionController.downloadFile);
 
 module.exports = router;

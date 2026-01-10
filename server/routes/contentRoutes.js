@@ -67,6 +67,8 @@ router.get('/tugas/session/:pertemuan_id', contentController.getTasksBySession);
 // Download Material File
 router.get('/materi/:materiId/download/:fileIndex', contentController.downloadMaterialFile);
 
+router.get('/tugas/:id/download/:index', contentController.downloadTaskAttachment);
+
 router.get('/tugas/:id', contentController.getTaskById);
 
 router.get('/me/:taskId', submissionController.getMySubmission);

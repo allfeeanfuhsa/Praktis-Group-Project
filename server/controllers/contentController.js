@@ -1,8 +1,10 @@
 // server/controllers/contentController.js
+const path = require('path');
+const fs = require('fs');
 const Tugas = require('../models/nosql/Tugas');
 const Materi = require('../models/nosql/Materi');
 // Import SQL Models
-const { Pertemuan, PraktikumUserRole, Role } = require('../models/sql'); 
+const { Pertemuan, PraktikumUserRole, Role } = require('../models/sql');
 
 // ==========================================
 // A. SESSION MANAGEMENT (SQL: Pertemuan)
@@ -20,15 +22,15 @@ exports.createSession = async (req, res, next) => {
     let isAuthorized = isAdmin;
 
     if (!isAdmin) {
-        const isAsdos = await PraktikumUserRole.findOne({
-            where: { id_praktikum, id_user: userId },
-            include: [{ model: Role, where: { deskripsi: 'asdos' } }]
-        });
-        if (isAsdos) isAuthorized = true;
+      const isAsdos = await PraktikumUserRole.findOne({
+        where: { id_praktikum, id_user: userId },
+        include: [{ model: Role, where: { deskripsi: 'asdos' } }]
+      });
+      if (isAsdos) isAuthorized = true;
     }
 
     if (!isAuthorized) {
-        return res.status(403).json({ message: 'Forbidden: You are not the Asdos for this class.' });
+      return res.status(403).json({ message: 'Forbidden: You are not the Asdos for this class.' });
     }
 
     // Create the session in SQL
@@ -80,7 +82,7 @@ exports.deleteSession = async (req, res, next) => {
 exports.createTask = async (req, res, next) => {
   try {
     const { pertemuan_id, judul, deskripsi, tenggat_waktu } = req.body;
-    
+
     // Validate
     if (!pertemuan_id || !judul || !tenggat_waktu) return res.status(400).json({ message: 'Missing fields' });
 
@@ -95,7 +97,7 @@ exports.createTask = async (req, res, next) => {
 
     const newTask = await Tugas.create({
       pertemuan_id, judul, deskripsi, tenggat_waktu: deadline,
-      created_by: req.user.id, attachments 
+      created_by: req.user.id, attachments
     });
 
     res.status(201).json({ message: 'Task created', data: newTask });
@@ -123,11 +125,11 @@ exports.createMaterial = async (req, res, next) => {
 
 // 6. Getters
 exports.getTasksBySession = async (req, res, next) => {
-    try {
-        const { pertemuan_id } = req.params;
-        const tasks = await Tugas.find({ pertemuan_id });
-        res.json(tasks);
-    } catch (error) { next(error); }
+  try {
+    const { pertemuan_id } = req.params;
+    const tasks = await Tugas.find({ pertemuan_id });
+    res.json(tasks);
+  } catch (error) { next(error); }
 };
 
 exports.getMaterialsBySession = async (req, res, next) => {
@@ -156,8 +158,6 @@ exports.downloadMaterialFile = async (req, res, next) => {
     // =========================================================
     // FIX STARTS HERE
     // =========================================================
-    const path = require('path');
-    const fs = require('fs');
 
     // 1. Normalize path separators (fixes Windows backslashes \ if moved to Linux)
     // We replace all backslashes with forward slashes before joining
@@ -168,7 +168,7 @@ exports.downloadMaterialFile = async (req, res, next) => {
     // '..'      = .../server
     // normalizedDbPath = uploads/materials/filename.pdf
     // Result    = .../server/uploads/materials/filename.pdf
-    const filePath = path.join(__dirname, '..', normalizedDbPath); 
+    const filePath = path.join(__dirname, '..', normalizedDbPath);
     // =========================================================
 
     // Debugging: Print this to your console to verify it found the right spot
@@ -187,14 +187,14 @@ exports.downloadMaterialFile = async (req, res, next) => {
     // Create Stream
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
-    
+
     stream.on('error', (err) => {
       console.error('Stream error:', err);
       res.status(500).json({ message: 'Error downloading file' });
     });
 
-  } catch (error) { 
-    next(error); 
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -215,16 +215,16 @@ exports.updateSession = async (req, res, next) => {
     // 2. Security Check (Optional but recommended)
     // You can reuse the authorization logic from createSession here 
     // to ensure only the assigned Asdos/Admin can edit.
-    
+
     // 3. Update Fields
     // We only update fields that are actually sent in the body
     if (tanggal) session.tanggal = tanggal;
     if (waktu_mulai) session.waktu_mulai = waktu_mulai;
     if (waktu_selesai) session.waktu_selesai = waktu_selesai;
     if (ruangan) session.ruangan = ruangan;
-    
+
     // If you added a 'topik' or 'tema' column to SQL later, update it here too.
-    
+
     await session.save();
 
     res.json({ message: 'Session updated successfully', data: session });
@@ -256,5 +256,38 @@ exports.getSessionById = async (req, res, next) => {
     res.json(session);
   } catch (err) {
     next(err);
+  }
+};
+
+exports.downloadTaskAttachment = async (req, res) => {
+  try {
+    const { id, index } = req.params;
+    
+    const task = await Tugas.findById(id);
+    if (!task || !task.attachments || !task.attachments[index]) {
+      return res.status(404).json({ message: 'File not found' });
+    }
+
+    const file = task.attachments[index];
+
+    // 1. NORMALIZE PATH (Fix Windows backslashes)
+    const normalizedDbPath = file.path.replace(/\\/g, '/');
+
+    // 2. RESOLVE PATH
+    // Use '..' to go from 'server/controllers' to 'server/'
+    const filePath = path.join(__dirname, '..', normalizedDbPath); 
+    
+    // Debugging
+    // console.log("Task File Path:", filePath);
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: 'File not found on server' });
+    }
+    
+    res.download(filePath, file.filename);
+
+  } catch (error) {
+    console.error("Download Error:", error);
+    res.status(500).json({ message: 'Error downloading file' });
   }
 };

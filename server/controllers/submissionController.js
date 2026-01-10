@@ -265,3 +265,34 @@ exports.getMySubmission = async (req, res, next) => {
     next(error);
   }
 };
+
+exports.getMySubmissionsForTasks = async (req, res, next) => {
+  try {
+    const { taskIds } = req.body; // Expects array of IDs: ["id1", "id2"]
+    const studentId = req.user.id;
+
+    if (!taskIds || !Array.isArray(taskIds)) {
+        return res.status(400).json({ message: "Invalid taskIds" });
+    }
+
+    // Find all submissions by this student for these tasks
+    const submissions = await Pengumpulan.find({
+        student_id: studentId,
+        tugas_id: { $in: taskIds }
+    });
+
+    // Create a map for easy lookup: { "taskId": { status: "...", nilai: 80 } }
+    const statusMap = {};
+    submissions.forEach(sub => {
+        statusMap[sub.tugas_id] = {
+            status: sub.status,
+            nilai: sub.nilai,
+            submitted_at: sub.submitted_at
+        };
+    });
+
+    res.json(statusMap);
+  } catch (error) {
+    next(error);
+  }
+};

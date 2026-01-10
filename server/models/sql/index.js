@@ -25,6 +25,10 @@ Role.belongsToMany(User, { through: UserRole, foreignKey: 'id_role', otherKey: '
 User.belongsToMany(Praktikum, { through: PraktikumUserRole, foreignKey: 'id_user', otherKey: 'id_praktikum' });
 Praktikum.belongsToMany(User, { through: PraktikumUserRole, foreignKey: 'id_praktikum', otherKey: 'id_user' });
 
+User.hasMany(PraktikumUserRole, { foreignKey: 'id_user' });
+Praktikum.hasMany(PraktikumUserRole, { foreignKey: 'id_praktikum' });
+Role.hasMany(PraktikumUserRole, { foreignKey: 'id_role' });
+
 PraktikumUserRole.belongsTo(User, { foreignKey: 'id_user' });
 PraktikumUserRole.belongsTo(Role, { foreignKey: 'id_role' });
 PraktikumUserRole.belongsTo(Praktikum, { foreignKey: 'id_praktikum' });

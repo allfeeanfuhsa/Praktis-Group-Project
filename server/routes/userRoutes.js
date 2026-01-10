@@ -21,4 +21,28 @@ router.put('/profile', userController.updateProfile);
 router.get('/asdos-dashboard', userController.getAsdosDashboard);
 router.get('/mahasiswa-dashboard', userController.getMahasiswaDashboard);
 
+// === ADMIN ROUTES ===
+// Get User Details
+router.get('/admin/users/:id', 
+  verifyToken, 
+  // checkRole(['admin']), // Ensure only admin can access
+  userController.getUserById
+);
+
+router.put('/admin/users/:id', verifyToken, userController.updateUserByAdmin);
+
+// Assign Class
+router.post('/admin/enroll', 
+  verifyToken, 
+  // checkRole(['admin']), 
+  userController.assignUserToClass
+);
+
+// Remove Class
+router.post('/admin/unenroll', 
+  verifyToken, 
+  // checkRole(['admin']), 
+  userController.removeUserFromClass
+);
+
 module.exports = router;
