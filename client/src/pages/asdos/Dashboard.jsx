@@ -123,7 +123,7 @@ const Dashboard = () => {
                   <div className="d-grid gap-2 border-top pt-3">
                     {/* Link to the Module Manager we built earlier */}
                     {/* NOTE: Ideally, we pass the ID in the URL so the next page knows which one to open */}
-                    <Link to="/asdos/modul-manager" className="btn btn-primary btn-sm fw-bold">
+                    <Link to={`/asdos/kelas/${cls.id_praktikum}/jadwal`} className="btn btn-primary btn-sm fw-bold">
                       <i className="bi bi-gear-fill me-2"></i>Kelola Pertemuan
                     </Link>
                   </div>

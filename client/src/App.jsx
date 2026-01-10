@@ -76,7 +76,7 @@ function App() {
         <Route path="session/:id_pertemuan" element={<SessionDetail />} />
 
         {/* Legacy/Static Routes (Keep if you still need them for generic lists) */}
-        <Route path="penilaian" element={<PenilaianAsdos />} />
+        <Route path="kelas/:id_praktikum/tugas/:id_tugas/grade" element={<PenilaianAsdos />} />
         
       </Route>
 

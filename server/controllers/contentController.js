@@ -142,7 +142,7 @@ exports.getMaterialsBySession = async (req, res, next) => {
 exports.downloadMaterialFile = async (req, res, next) => {
   try {
     const { materiId, fileIndex } = req.params;
-    const material = await Materi.findById(materiId);
+    const material = await Materi.findById(materiId); //
 
     if (!material) {
       return res.status(404).json({ message: 'Material not found' });
@@ -153,21 +153,38 @@ exports.downloadMaterialFile = async (req, res, next) => {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    // Set proper headers for file download
-    res.setHeader('Content-Type', file.mimetype);
-    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
-    res.setHeader('Content-Length', file.size);
-
-    // Stream the file
-    const fs = require('fs');
+    // =========================================================
+    // FIX STARTS HERE
+    // =========================================================
     const path = require('path');
-    const filePath = path.resolve(file.path);
-    
-    // Check if file exists
+    const fs = require('fs');
+
+    // 1. Normalize path separators (fixes Windows backslashes \ if moved to Linux)
+    // We replace all backslashes with forward slashes before joining
+    const normalizedDbPath = file.path.replace(/\\/g, '/');
+
+    // 2. Resolve Path Relative to THIS controller file
+    // __dirname = .../server/controllers
+    // '..'      = .../server
+    // normalizedDbPath = uploads/materials/filename.pdf
+    // Result    = .../server/uploads/materials/filename.pdf
+    const filePath = path.join(__dirname, '..', normalizedDbPath); 
+    // =========================================================
+
+    // Debugging: Print this to your console to verify it found the right spot
+    console.log("DB Path:", file.path);
+    console.log("Resolved System Path:", filePath);
+
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
 
+    // Set Headers
+    res.setHeader('Content-Type', file.mimetype);
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader('Content-Length', file.size); //
+
+    // Create Stream
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
     
@@ -175,5 +192,44 @@ exports.downloadMaterialFile = async (req, res, next) => {
       console.error('Stream error:', err);
       res.status(500).json({ message: 'Error downloading file' });
     });
-  } catch (error) { next(error); }
+
+  } catch (error) { 
+    next(error); 
+  }
+};
+
+// ==========================================
+// NEW: Update Session (Reschedule)
+// ==========================================
+exports.updateSession = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { tanggal, waktu_mulai, waktu_selesai, ruangan, topik } = req.body; // Added 'topik' if you have it, or just standard fields
+
+    // 1. Find the Session
+    const session = await Pertemuan.findByPk(id);
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found' });
+    }
+
+    // 2. Security Check (Optional but recommended)
+    // You can reuse the authorization logic from createSession here 
+    // to ensure only the assigned Asdos/Admin can edit.
+    
+    // 3. Update Fields
+    // We only update fields that are actually sent in the body
+    if (tanggal) session.tanggal = tanggal;
+    if (waktu_mulai) session.waktu_mulai = waktu_mulai;
+    if (waktu_selesai) session.waktu_selesai = waktu_selesai;
+    if (ruangan) session.ruangan = ruangan;
+    
+    // If you added a 'topik' or 'tema' column to SQL later, update it here too.
+    
+    await session.save();
+
+    res.json({ message: 'Session updated successfully', data: session });
+
+  } catch (error) {
+    next(error);
+  }
 };

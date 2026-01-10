@@ -4,7 +4,7 @@ import api from '../../utils/api';
 
 const Materi = () => {
     const { id_praktikum } = useParams();
-    
+
     // Data States
     const [sessions, setSessions] = useState([]);
     const [materiBySession, setMateriBySession] = useState({});
@@ -25,7 +25,7 @@ const Materi = () => {
                 setLoading(false);
             }
         };
-        
+
         if (id_praktikum) {
             fetchSessions();
         }
@@ -41,7 +41,7 @@ const Materi = () => {
 
             try {
                 const materiData = {};
-                
+
                 // Fetch materials for each session in parallel
                 const promises = sessions.map(session =>
                     api.get(`/api/content/materi/session/${session.id_pertemuan}`)
@@ -91,19 +91,31 @@ const Materi = () => {
                 { responseType: 'blob' }
             );
 
-            // Create a blob URL and download
+            // create blob url... (existing code)
             const blob = new Blob([response.data], { type: response.headers['content-type'] });
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
+            // Use the filename from the object safely
             link.setAttribute('download', material.attachments[fileIndex].filename);
             document.body.appendChild(link);
             link.click();
             link.parentNode.removeChild(link);
-            window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error('Download error:', err);
-            alert('Gagal mengunduh file');
+
+            // --- ADD THIS TO DECODE THE ERROR ---
+            if (err.response && err.response.data instanceof Blob) {
+                const errorText = await err.response.data.text();
+                try {
+                    const errorJson = JSON.parse(errorText);
+                    alert(`Error: ${errorJson.message}`);
+                } catch (e) {
+                    alert('Gagal mengunduh file: Server Error');
+                }
+            } else {
+                alert('Gagal mengunduh file');
+            }
         }
     };
 
@@ -136,7 +148,7 @@ const Materi = () => {
     }
 
     // Flatten all materials from all sessions
-    const allMaterials = sessions.flatMap(session => 
+    const allMaterials = sessions.flatMap(session =>
         (materiBySession[session.id_pertemuan] || []).map(materi => ({
             ...materi,
             session_name: `Sesi ${session.sesi_ke}`,
@@ -194,7 +206,7 @@ const Materi = () => {
                                                 </small>
                                             </div>
                                         </div>
-                                        
+
                                         {item.deskripsi && (
                                             <p className="small text-muted mb-3">{item.deskripsi}</p>
                                         )}
@@ -207,10 +219,10 @@ const Materi = () => {
                                                 </small>
                                             </div>
                                         )}
-                                        
+
                                         {/* Download Button */}
                                         {item.attachments && item.attachments.length > 0 && (
-                                            <button 
+                                            <button
                                                 onClick={() => handleDownload(item, 0)}
                                                 className="btn btn-sm btn-outline-primary w-100"
                                             >

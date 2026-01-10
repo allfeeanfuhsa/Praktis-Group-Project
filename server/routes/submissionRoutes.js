@@ -48,4 +48,10 @@ router.get('/:submissionId/download',
   submissionController.downloadFile
 );
 
+// NEW: Get all submissions for a specific task
+router.get('/task/:taskId', 
+  checkRole(['asdos', 'admin']), 
+  submissionController.getSubmissionsByTask
+);
+
 module.exports = router;

@@ -1,7 +1,7 @@
 // server/controllers/submissionController.js
 const Pengumpulan = require('../models/nosql/Pengumpulan');
 const Tugas = require('../models/nosql/Tugas');
-const { PraktikumUserRole, Role, Pertemuan } = require('../models/sql');
+const { PraktikumUserRole, Role, Pertemuan, User } = require('../models/sql');
 
 // 1. STUDENT: Submit File (Smart Update)
 exports.submitWork = async (req, res) => {
@@ -155,53 +155,90 @@ const fs = require('fs');
 
 exports.downloadFile = async (req, res, next) => {
   try {
-    const { materiId, fileIndex } = req.params;
+    const { submissionId } = req.params;
 
-    const material = await Materi.findById(materiId);
-    if (!material) {
-      return res.status(404).json({ message: 'Material not found' });
-    }
-
-    const file = material.attachments[parseInt(fileIndex, 10)];
-    if (!file) {
+    // 1. Find the Submission (Pengumpulan), NOT Materi
+    const submission = await Pengumpulan.findById(submissionId);
+    
+    if (!submission || !submission.file) {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    // 🔥 FIX STARTS HERE 🔥
-    // Normalize path (Windows → cross-platform)
-    const normalizedPath = file.path.replace(/\\/g, '/');
+    const file = submission.file; // In Pengumpulan.js, 'file' is a single object, not an array
 
-    // Resolve absolute file path
-    const filePath = path.join(process.cwd(), normalizedPath);
-    // 🔥 FIX ENDS HERE 🔥
+    // =========================================================
+    // FIX FOR PATH RESOLUTION
+    // =========================================================
+    
+    // A. Normalize path separators (Fixes Windows backslashes from DB)
+    const normalizedDbPath = file.path.replace(/\\/g, '/');
 
-    // Debug (remove later)
-    // console.log('Resolved file path:', filePath);
+    // B. Resolve Path Relative to THIS controller file
+    // __dirname = .../server/controllers
+    // '..'      = .../server
+    // normalizedDbPath = uploads/submissions/filename.pdf
+    const filePath = path.join(__dirname, '..', normalizedDbPath); 
+    
+    // =========================================================
+
+    // Debugging
+    console.log("Looking for submission at:", filePath);
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
 
-    // Set headers
+    // Set Headers
     res.setHeader('Content-Type', file.mimetype);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${file.filename}"`
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     res.setHeader('Content-Length', file.size);
 
-    // Stream file
+    // Stream
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
-
-    stream.on('error', err => {
+    
+    stream.on('error', (err) => {
       console.error('Stream error:', err);
       res.status(500).json({ message: 'Error downloading file' });
     });
 
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 };
 
+exports.getSubmissionsByTask = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
 
+    // 1. Get the Task metadata
+    const task = await Tugas.findById(taskId);
+    if (!task) return res.status(404).json({ message: 'Task not found' });
+
+    // 2. Get all submissions from MongoDB
+    const submissions = await Pengumpulan.find({ tugas_id: taskId });
+
+    // 3. Enrich with SQL User Data
+    const enrichedSubmissions = await Promise.all(submissions.map(async (sub) => {
+      // FIX 2: Change 'sub.user_id' to 'sub.student_id'
+      // The Mongo model uses 'student_id', not 'user_id'
+      const student = await User.findByPk(sub.student_id, {
+        attributes: ['nama', 'nim']
+      });
+
+      return {
+        ...sub.toObject(),
+        student_name: student ? student.nama : 'Unknown',
+        student_nim: student ? student.nim : 'Unknown'
+      };
+    }));
+
+    res.json({
+      task_title: task.judul,
+      submissions: enrichedSubmissions
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};

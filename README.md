@@ -11,6 +11,7 @@ What we do next:
 
 
 
+
 ```
 Praktis Project
 ├─ client
@@ -125,6 +126,10 @@ Praktis Project
    │  └─ userRoutes.js
    ├─ seed.js
    ├─ server.js
+   ├─ uploads
+   │  ├─ materials
+   │  ├─ submissions
+   │  └─ tasks
    ├─ services
    │  ├─ authService.js
    │  ├─ gradingService.js

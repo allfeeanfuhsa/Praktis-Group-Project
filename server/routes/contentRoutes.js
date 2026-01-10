@@ -18,18 +18,24 @@ router.use(verifyToken);
 // 1. SESSION ROUTES (SQL: Pertemuan)
 // =========================================================================
 
-// Create Session (The one you are trying to hit!)
+// Create
 router.post('/session', 
   checkRole(['asdos', 'admin']), 
   contentController.createSession
 );
 
-// Get Session List (Timeline)
+// Read (List)
 router.get('/session/list/:id_praktikum', 
   contentController.getSessionsByClass
 );
 
-// Delete Session
+// NEW: Update (Reschedule)
+router.put('/session/:id', 
+  checkRole(['asdos', 'admin']), 
+  contentController.updateSession
+);
+
+// Delete
 router.delete('/session/:id', 
   checkRole(['asdos', 'admin']), 
   contentController.deleteSession

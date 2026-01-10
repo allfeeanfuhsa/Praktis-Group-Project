@@ -1,244 +1,229 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom'; // 1. Import useParams
 import api from '../../utils/api';
 
-const ManajemenModul = () => {
-    // Data States
-    const [praktikumList, setPraktikumList] = useState([]);
-    const [selectedPraktikum, setSelectedPraktikum] = useState('');
-    const [sessions, setSessions] = useState([]);
-    
-    // UI States
-    const [loading, setLoading] = useState(false);
-    const [showForm, setShowForm] = useState(false);
-    
-    // Form State
-    const [formData, setFormData] = useState({
-        sesi_ke: '',
-        tanggal: '',
-        waktu_mulai: '',
-        waktu_selesai: '',
-        ruangan: 'Lab Komputer 1' // Default value matching your UI
+const JadwalAsdos = () => {
+  // 1. Get ID directly from URL
+  const { id_praktikum } = useParams();
+
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // State for Editing
+  const [showModal, setShowModal] = useState(false);
+  const [editingSession, setEditingSession] = useState(null);
+  const [formData, setFormData] = useState({
+    tanggal: '',
+    waktu_mulai: '',
+    waktu_selesai: '',
+    ruangan: ''
+  });
+
+  // 2. Fetch Data Immediately on Mount
+  const fetchSessions = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/api/content/session/list/${id_praktikum}`);
+      
+      // Sort sessions by "sesi_ke" (Session 1, 2, 3...)
+      const sorted = response.data.sort((a, b) => a.sesi_ke - b.sesi_ke);
+      setSessions(sorted);
+    } catch (err) {
+      console.error("Error fetching sessions:", err);
+      setError("Gagal memuat jadwal.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id_praktikum) {
+      fetchSessions();
+    }
+  }, [id_praktikum]);
+
+  // --- EDIT HANDLERS ---
+
+  const handleEditClick = (session) => {
+    setEditingSession(session);
+    // Pre-fill the form with existing data
+    setFormData({
+      tanggal: session.tanggal.split('T')[0], // Extract YYYY-MM-DD
+      waktu_mulai: session.waktu_mulai,
+      waktu_selesai: session.waktu_selesai,
+      ruangan: session.ruangan
     });
+    setShowModal(true);
+  };
 
-    // 1. Fetch Classes (On Mount)
-    useEffect(() => {
-        const fetchClasses = async () => {
-            try {
-                // Using the dashboard endpoint we just made to get ONLY assigned classes
-                const res = await api.get('/api/users/asdos-dashboard'); 
-                setPraktikumList(res.data.myClasses);
-            } catch (err) {
-                console.error("Error fetching classes", err);
-            }
-        };
-        fetchClasses();
-    }, []);
+  const handleModalChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-    // 2. Fetch Sessions when a Class is selected
-    useEffect(() => {
-        if (!selectedPraktikum) {
-            setSessions([]);
-            return;
-        }
-        fetchSessions();
-    }, [selectedPraktikum]);
+  const handleSaveChanges = async (e) => {
+    e.preventDefault();
+    try {
+      // Call the PUT endpoint we created
+      await api.put(`/api/content/session/${editingSession.id_pertemuan}`, formData);
+      
+      alert("Jadwal berhasil diperbarui!");
+      setShowModal(false);
+      fetchSessions(); // Refresh list to show new data
+    } catch (err) {
+      console.error("Update error:", err);
+      alert("Gagal memperbarui jadwal.");
+    }
+  };
 
-    const fetchSessions = async () => {
-        try {
-            setLoading(true);
-            const res = await api.get(`/api/content/session/list/${selectedPraktikum}`);
-            setSessions(res.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
+  // Helper: Format Date for Display
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('id-ID', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+  };
 
-    // 3. Handle Create Session
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        try {
-            await api.post('/api/content/session', {
-                ...formData,
-                id_praktikum: selectedPraktikum
-            });
-            alert("Jadwal Berhasil Disimpan!");
-            setShowForm(false);
-            fetchSessions(); // Refresh list
-            
-            // Auto increment session number for convenience
-            setFormData(prev => ({...prev, sesi_ke: Number(prev.sesi_ke) + 1}));
-        } catch (err) {
-            alert(err.response?.data?.message || "Gagal membuat sesi");
-        }
-    };
+  if (loading) return <div className="text-center py-5">Loading jadwal...</div>;
+  if (error) return <div className="alert alert-danger">{error}</div>;
 
-    // 4. Handle Delete
-    const handleDelete = async (id) => {
-        if(!window.confirm("Hapus jadwal ini? Konten di dalamnya mungkin hilang.")) return;
-        try {
-            await api.delete(`/api/content/session/${id}`);
-            fetchSessions();
-        } catch (err) {
-            alert("Gagal menghapus");
-        }
-    };
-
-    return (
-        <div className="container-fluid">
-            {/* --- HEADER --- */}
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h3 className="fw-bold text-dark">Manajemen Sesi & Konten</h3>
-                    <p className="text-muted small mb-0">Atur jadwal pertemuan dan materi ajar di sini.</p>
-                </div>
-            </div>
-
-            {/* --- SELECT CLASS CARD --- */}
-            <div className="card border-0 shadow-sm rounded-4 mb-4">
-                <div className="card-body p-4">
-                    <label className="form-label fw-bold small text-muted text-uppercase">Pilih Kelas Praktikum</label>
-                    <select 
-                        className="form-select bg-light border-0 py-2"
-                        value={selectedPraktikum}
-                        onChange={(e) => setSelectedPraktikum(e.target.value)}
-                    >
-                        <option value="">-- Pilih Kelas --</option>
-                        {praktikumList.map(p => (
-                            <option key={p.id_praktikum} value={p.id_praktikum}>
-                                {p.mata_kuliah} - Kelas {p.kode_kelas} ({p.tahun_pelajaran}))
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            </div>
-
-            {selectedPraktikum && (
-                <>
-                    {/* --- ACTION BAR --- */}
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h5 className="mb-0 fw-bold text-dark">Timeline Pertemuan</h5>
-                        <button 
-                            className={`btn ${showForm ? 'btn-light text-danger' : 'btn-primary'} shadow-sm fw-bold`} 
-                            onClick={() => setShowForm(!showForm)}
-                        >
-                            <i className={`bi ${showForm ? 'bi-x-lg' : 'bi-plus-lg'} me-2`}></i>
-                            {showForm ? 'Batal' : 'Buat Sesi Baru'}
-                        </button>
-                    </div>
-
-                    {/* --- ADD SESSION FORM (Matches JadwalInput.jsx style) --- */}
-                    {showForm && (
-                        <div className="card border-0 shadow-sm rounded-4 mb-4 bg-white">
-                            <div className="card-header bg-white py-3 border-bottom-0">
-                                <h6 className="mb-0 fw-bold text-primary">Form Input Jadwal</h6>
-                            </div>
-                            <div className="card-body p-4 pt-0">
-                                <form onSubmit={handleSubmit}>
-                                    <div className="row">
-                                        <div className="col-md-2 mb-3">
-                                            <label className="form-label fw-bold small text-muted">Sesi Ke-</label>
-                                            <input type="number" className="form-control bg-light border-0" required 
-                                                value={formData.sesi_ke} onChange={e=>setFormData({...formData, sesi_ke: e.target.value})}/>
-                                        </div>
-                                        <div className="col-md-4 mb-3">
-                                            <label className="form-label fw-bold small text-muted">Tanggal</label>
-                                            <input type="date" className="form-control bg-light border-0" required
-                                                value={formData.tanggal} onChange={e=>setFormData({...formData, tanggal: e.target.value})}/>
-                                        </div>
-                                        <div className="col-md-6 mb-3">
-                                            <label className="form-label fw-bold small text-muted">Ruangan</label>
-                                            <select className="form-select bg-light border-0" required
-                                                value={formData.ruangan} onChange={e=>setFormData({...formData, ruangan: e.target.value})}>
-                                                <option value="Lab Komputer 1">Lab Komputer 1</option>
-                                                <option value="Lab Komputer 2">Lab Komputer 2</option>
-                                                <option value="Lab Jaringan">Lab Jaringan</option>
-                                                <option value="Lab Multimedia">Lab Multimedia</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div className="row">
-                                        <div className="col-md-3 mb-3">
-                                            <label className="form-label fw-bold small text-muted">Jam Mulai</label>
-                                            <input type="time" className="form-control bg-light border-0" required
-                                                value={formData.waktu_mulai} onChange={e=>setFormData({...formData, waktu_mulai: e.target.value})}/>
-                                        </div>
-                                        <div className="col-md-3 mb-3">
-                                            <label className="form-label fw-bold small text-muted">Jam Selesai</label>
-                                            <input type="time" className="form-control bg-light border-0" required
-                                                value={formData.waktu_selesai} onChange={e=>setFormData({...formData, waktu_selesai: e.target.value})}/>
-                                        </div>
-                                        <div className="col-md-6 d-flex align-items-end mb-3">
-                                            <button type="submit" className="btn btn-success w-100 fw-bold shadow-sm">
-                                                <i className="bi bi-save me-2"></i>Simpan Jadwal
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* --- TIMELINE LIST (Matches Jadwal.jsx style) --- */}
-                    <div className="card border-0 shadow-sm rounded-4">
-                        <div className="list-group list-group-flush rounded-4">
-                            {loading ? (
-                                <div className="text-center py-5 text-muted">Loading data...</div>
-                            ) : sessions.length === 0 ? (
-                                <div className="list-group-item text-center text-muted py-5 border-0">
-                                    <i className="bi bi-calendar-x fs-1 d-block mb-3 text-secondary opacity-50"></i>
-                                    Belum ada jadwal pertemuan untuk kelas ini.
-                                </div>
-                            ) : (
-                                sessions.map(s => (
-                                    <div key={s.id_pertemuan} className="list-group-item p-4 border-bottom">
-                                        <div className="d-flex w-100 justify-content-between align-items-center">
-                                            
-                                            {/* Left Info */}
-                                            <div className="d-flex align-items-center">
-                                                <div className="bg-primary bg-opacity-10 p-3 rounded-3 text-primary me-3 text-center" style={{minWidth: '60px'}}>
-                                                    <h5 className="mb-0 fw-bold">#{s.sesi_ke}</h5>
-                                                </div>
-                                                <div>
-                                                    <h6 className="mb-1 fw-bold text-dark">Pertemuan {s.sesi_ke}</h6>
-                                                    <div className="text-muted small">
-                                                        <i className="bi bi-calendar-event me-2"></i>{s.tanggal} 
-                                                        <span className="mx-2">•</span> 
-                                                        <i className="bi bi-clock me-2"></i>{s.waktu_mulai} - {s.waktu_selesai}
-                                                        <br/>
-                                                        <i className="bi bi-geo-alt me-2"></i>{s.ruangan}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Right Actions */}
-                                            <div className="d-flex gap-2">
-                                                {/* Manage Content Button */}
-                                                <Link to={`/asdos/session/${s.id_pertemuan}`} className="btn btn-outline-primary btn-sm fw-bold px-3">
-                                                    <i className="bi bi-folder2-open me-2"></i>Kelola Konten
-                                                </Link>
-                                                
-                                                {/* Delete Button */}
-                                                <button 
-                                                    onClick={() => handleDelete(s.id_pertemuan)} 
-                                                    className="btn btn-light text-danger border btn-sm"
-                                                    title="Hapus Sesi"
-                                                >
-                                                    <i className="bi bi-trash"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </>
-            )}
+  return (
+    <div className="container-fluid px-0">
+      
+      {/* HEADER */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+           {/* Back Button logic is handled by Sidebar usually, but we can link back to Dashboard if needed */}
+           <h3 className="fw-bold text-dark">Manajemen Jadwal</h3>
+           <p className="text-muted small">Atur waktu dan ruangan untuk praktikum ini.</p>
         </div>
-    );
+      </div>
+
+      {/* SESSION LIST */}
+      <div className="row">
+        {sessions.map((session) => (
+          <div key={session.id_pertemuan} className="col-12 mb-3">
+            <div className="card shadow-sm border-0 rounded-3">
+              <div className="card-body d-flex align-items-center justify-content-between p-4">
+                
+                {/* Left: Info */}
+                <div className="d-flex align-items-center gap-4">
+                  {/* Session Badge */}
+                  <div className="text-center bg-light rounded p-3 border" style={{minWidth: '80px'}}>
+                    <span className="d-block small text-muted text-uppercase fw-bold">Sesi</span>
+                    <span className="h3 fw-bold text-primary mb-0">{session.sesi_ke}</span>
+                  </div>
+
+                  {/* Details */}
+                  <div>
+                    <h5 className="fw-bold mb-1">
+                      {formatDate(session.tanggal)}
+                    </h5>
+                    <div className="d-flex gap-3 text-muted small">
+                      <span><i className="bi bi-clock me-1"></i> {session.waktu_mulai} - {session.waktu_selesai}</span>
+                      <span><i className="bi bi-geo-alt me-1"></i> {session.ruangan}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right: Actions */}
+                <div>
+                  <button 
+                    onClick={() => handleEditClick(session)} 
+                    className="btn btn-outline-primary btn-sm fw-bold px-3"
+                  >
+                    <i className="bi bi-pencil-square me-2"></i>Ubah Jadwal
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {sessions.length === 0 && (
+          <div className="text-center text-muted py-5">
+            Belum ada sesi yang dibuat untuk kelas ini.
+          </div>
+        )}
+      </div>
+
+      {/* === EDIT MODAL (Simple Overlay) === */}
+      {showModal && (
+        <div className="modal d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}} tabIndex="-1">
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title fw-bold">Ubah Jadwal Sesi {editingSession?.sesi_ke}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+              </div>
+              <form onSubmit={handleSaveChanges}>
+                <div className="modal-body">
+                  
+                  {/* Date Input */}
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-muted">Tanggal</label>
+                    <input 
+                      type="date" 
+                      className="form-control"
+                      name="tanggal"
+                      value={formData.tanggal}
+                      onChange={handleModalChange}
+                      required
+                    />
+                  </div>
+
+                  {/* Time Inputs */}
+                  <div className="row">
+                    <div className="col-6 mb-3">
+                      <label className="form-label small fw-bold text-muted">Mulai</label>
+                      <input 
+                        type="time" 
+                        className="form-control"
+                        name="waktu_mulai"
+                        value={formData.waktu_mulai}
+                        onChange={handleModalChange}
+                        required
+                      />
+                    </div>
+                    <div className="col-6 mb-3">
+                      <label className="form-label small fw-bold text-muted">Selesai</label>
+                      <input 
+                        type="time" 
+                        className="form-control"
+                        name="waktu_selesai"
+                        value={formData.waktu_selesai}
+                        onChange={handleModalChange}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Room Input */}
+                  <div className="mb-3">
+                    <label className="form-label small fw-bold text-muted">Ruangan</label>
+                    <input 
+                      type="text" 
+                      className="form-control"
+                      name="ruangan"
+                      value={formData.ruangan}
+                      onChange={handleModalChange}
+                      required
+                    />
+                  </div>
+
+                </div>
+                <div className="modal-footer border-0">
+                  <button type="button" className="btn btn-light" onClick={() => setShowModal(false)}>Batal</button>
+                  <button type="submit" className="btn btn-primary fw-bold">Simpan Perubahan</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
 };
 
-export default ManajemenModul;
+export default JadwalAsdos;
