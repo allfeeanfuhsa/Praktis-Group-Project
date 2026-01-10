@@ -3,7 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages - Auth
-import Login from './pages/auth/Login'; 
+import Login from './pages/auth/Login';
 import RoleSelection from './pages/auth/RoleSelection';
 
 // Pages - Admin
@@ -18,6 +18,7 @@ import LayoutAsdos from './layouts/LayoutAsdos';
 import DashboardAsdos from './pages/asdos/Dashboard';
 import JadwalAsdos from './pages/asdos/Jadwal'; // This is the new "Timeline" page
 import MateriAsdos from './pages/asdos/Materi';
+import MateriInput from './pages/asdos/MateriInput';
 import TugasAsdos from './pages/asdos/Tugas';
 import PenilaianAsdos from './pages/asdos/Penilaian';
 import SessionDetail from './pages/asdos/SessionDetail';
@@ -32,38 +33,54 @@ import TugasMhs from './pages/mahasiswa/Tugas';
 import TugasUpload from './pages/mahasiswa/TugasUpload';
 import SessionDetailMhs from './pages/mahasiswa/SessionDetail';
 
+import Profile from './pages/common/Profile';
+
 function App() {
   return (
     <Routes>
-      
+
       {/* --- Public Routes --- */}
       <Route path="/" element={<Login />} />
       <Route path="/auth/login" element={<Login />} />
 
       {/* --- Role Selection --- */}
-      <Route 
-        path="/auth/role-selection" 
+      <Route
+        path="/auth/role-selection"
         element={
           <ProtectedRoute>
-             <RoleSelection />
+            <RoleSelection />
           </ProtectedRoute>
-        } 
+        }
       />
 
       {/* --- Admin Routes --- */}
-      <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><LayoutAdmin /></ProtectedRoute>}>
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute allowedRoles={['admin']}>
+            <LayoutAdmin />
+          </ProtectedRoute>
+        }
+      >
+        {/* Child Routes (Rendered inside LayoutAdmin's <Outlet />) */}
         <Route path="dashboard" element={<DashboardAdmin />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="asdos-manager" element={<ManajemenAsdos />} />
         <Route path="users" element={<ManajemenUser />} />
         <Route path="praktikum" element={<ManajemenPraktikum />} />
+        {/* ✅ FIX: Move it here and use relative path "user/:id" */}
+        {/* Note: It inherits the 'admin' protection from the parent route */}
+        <Route path="user/:id" element={<Profile />} />
+
       </Route>
 
 
       {/* --- Asdos Routes (UPDATED) --- */}
       <Route path="/asdos" element={<ProtectedRoute allowedRoles={['asdos']}><LayoutAsdos /></ProtectedRoute>}>
-        
+
         <Route path="dashboard" element={<DashboardAsdos />} />
-        
+        <Route path="profile" element={<Profile />} />
+
         {/* 1. DYNAMIC JADWAL ROUTE */}
         {/* Matches sidebar link: /asdos/kelas/1/jadwal */}
         <Route path="kelas/:id_praktikum/jadwal" element={<JadwalAsdos />} />
@@ -71,19 +88,21 @@ function App() {
         {/* 2. OTHER DYNAMIC ROUTES (Placeholders for now) */}
         <Route path="kelas/:id_praktikum/materi" element={<MateriAsdos />} />
         <Route path="kelas/:id_praktikum/tugas" element={<TugasAsdos />} />
-        
+
         {/* 3. SESSION DETAIL (Where we will upload files later) */}
-        <Route path="session/:id_pertemuan" element={<SessionDetail />} />
+        <Route path="kelas/:id_praktikum/session/:id_pertemuan" element={<SessionDetail />} />
 
         {/* Legacy/Static Routes (Keep if you still need them for generic lists) */}
+        <Route path="kelas/:id_praktikum/materi/input" element={<MateriInput />} />
         <Route path="kelas/:id_praktikum/tugas/:id_tugas/grade" element={<PenilaianAsdos />} />
-        
+
       </Route>
 
 
       {/* --- Mahasiswa Routes --- */}
       <Route path="/mahasiswa" element={<ProtectedRoute allowedRoles={['mahasiswa']}><LayoutMhs /></ProtectedRoute>}>
         <Route path="dashboard" element={<DashboardMhs />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="kelas/:id_praktikum/jadwal" element={<JadwalMhs />} />
         <Route path="kelas/:id_praktikum/materi" element={<MateriMhs />} />
         <Route path="kelas/:id_praktikum/tugas" element={<TugasMhs />} />

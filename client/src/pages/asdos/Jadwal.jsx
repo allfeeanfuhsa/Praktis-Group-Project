@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom'; // 1. Import useParams
+import { useParams, Link } from 'react-router-dom';
 import api from '../../utils/api';
 
 const JadwalAsdos = () => {
-  // 1. Get ID directly from URL
   const { id_praktikum } = useParams();
 
   const [sessions, setSessions] = useState([]);
@@ -20,13 +19,11 @@ const JadwalAsdos = () => {
     ruangan: ''
   });
 
-  // 2. Fetch Data Immediately on Mount
+  // Fetch Data
   const fetchSessions = async () => {
     try {
       setLoading(true);
       const response = await api.get(`/api/content/session/list/${id_praktikum}`);
-      
-      // Sort sessions by "sesi_ke" (Session 1, 2, 3...)
       const sorted = response.data.sort((a, b) => a.sesi_ke - b.sesi_ke);
       setSessions(sorted);
     } catch (err) {
@@ -38,18 +35,14 @@ const JadwalAsdos = () => {
   };
 
   useEffect(() => {
-    if (id_praktikum) {
-      fetchSessions();
-    }
+    if (id_praktikum) fetchSessions();
   }, [id_praktikum]);
 
-  // --- EDIT HANDLERS ---
-
+  // --- HANDLERS ---
   const handleEditClick = (session) => {
     setEditingSession(session);
-    // Pre-fill the form with existing data
     setFormData({
-      tanggal: session.tanggal.split('T')[0], // Extract YYYY-MM-DD
+      tanggal: session.tanggal.split('T')[0],
       waktu_mulai: session.waktu_mulai,
       waktu_selesai: session.waktu_selesai,
       ruangan: session.ruangan
@@ -64,19 +57,16 @@ const JadwalAsdos = () => {
   const handleSaveChanges = async (e) => {
     e.preventDefault();
     try {
-      // Call the PUT endpoint we created
       await api.put(`/api/content/session/${editingSession.id_pertemuan}`, formData);
-      
       alert("Jadwal berhasil diperbarui!");
       setShowModal(false);
-      fetchSessions(); // Refresh list to show new data
+      fetchSessions();
     } catch (err) {
       console.error("Update error:", err);
       alert("Gagal memperbarui jadwal.");
     }
   };
 
-  // Helper: Format Date for Display
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -88,14 +78,11 @@ const JadwalAsdos = () => {
 
   return (
     <div className="container-fluid px-0">
-      
+
       {/* HEADER */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-           {/* Back Button logic is handled by Sidebar usually, but we can link back to Dashboard if needed */}
-           <h3 className="fw-bold text-dark">Manajemen Jadwal</h3>
-           <p className="text-muted small">Atur waktu dan ruangan untuk praktikum ini.</p>
-        </div>
+      <div className="mb-4">
+        <h3 className="fw-bold text-dark">Manajemen Jadwal</h3>
+        <p className="text-muted small">Atur waktu dan kelola materi untuk setiap pertemuan.</p>
       </div>
 
       {/* SESSION LIST */}
@@ -103,12 +90,12 @@ const JadwalAsdos = () => {
         {sessions.map((session) => (
           <div key={session.id_pertemuan} className="col-12 mb-3">
             <div className="card shadow-sm border-0 rounded-3">
-              <div className="card-body d-flex align-items-center justify-content-between p-4">
-                
+              <div className="card-body d-flex flex-column flex-md-row align-items-center justify-content-between p-4 gap-3">
+
                 {/* Left: Info */}
-                <div className="d-flex align-items-center gap-4">
+                <div className="d-flex align-items-center gap-4 w-100">
                   {/* Session Badge */}
-                  <div className="text-center bg-light rounded p-3 border" style={{minWidth: '80px'}}>
+                  <div className="text-center bg-light rounded p-3 border" style={{ minWidth: '80px' }}>
                     <span className="d-block small text-muted text-uppercase fw-bold">Sesi</span>
                     <span className="h3 fw-bold text-primary mb-0">{session.sesi_ke}</span>
                   </div>
@@ -126,13 +113,22 @@ const JadwalAsdos = () => {
                 </div>
 
                 {/* Right: Actions */}
-                <div>
-                  <button 
-                    onClick={() => handleEditClick(session)} 
-                    className="btn btn-outline-primary btn-sm fw-bold px-3"
+                <div className="d-flex gap-2">
+                  {/* 1. Edit Time/Room Button */}
+                  <button
+                    onClick={() => handleEditClick(session)}
+                    className="btn btn-outline-secondary btn-sm fw-bold px-3 text-nowrap"
                   >
-                    <i className="bi bi-pencil-square me-2"></i>Ubah Jadwal
+                    <i className="bi bi-pencil me-2"></i>Edit Waktu
                   </button>
+
+                  {/* 2. NEW: Manage Content Button (Links to SessionDetail.jsx) */}
+                  <Link
+                    to={`/asdos/kelas/${id_praktikum}/session/${session.id_pertemuan}`}
+                    className="btn btn-primary btn-sm fw-bold px-3 text-nowrap"
+                  >
+                    <i className="bi bi-folder-plus me-2"></i>Kelola Konten
+                  </Link>
                 </div>
 
               </div>
@@ -142,14 +138,14 @@ const JadwalAsdos = () => {
 
         {sessions.length === 0 && (
           <div className="text-center text-muted py-5">
-            Belum ada sesi yang dibuat untuk kelas ini.
+            Belum ada sesi yang dibuat untuk kelas ini. Hubungi Admin.
           </div>
         )}
       </div>
 
-      {/* === EDIT MODAL (Simple Overlay) === */}
+      {/* EDIT MODAL */}
       {showModal && (
-        <div className="modal d-block" style={{backgroundColor: 'rgba(0,0,0,0.5)'}} tabIndex="-1">
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
@@ -158,59 +154,28 @@ const JadwalAsdos = () => {
               </div>
               <form onSubmit={handleSaveChanges}>
                 <div className="modal-body">
-                  
-                  {/* Date Input */}
                   <div className="mb-3">
                     <label className="form-label small fw-bold text-muted">Tanggal</label>
-                    <input 
-                      type="date" 
-                      className="form-control"
-                      name="tanggal"
-                      value={formData.tanggal}
-                      onChange={handleModalChange}
-                      required
-                    />
+                    <input type="date" className="form-control" name="tanggal"
+                      value={formData.tanggal} onChange={handleModalChange} required />
                   </div>
-
-                  {/* Time Inputs */}
                   <div className="row">
                     <div className="col-6 mb-3">
                       <label className="form-label small fw-bold text-muted">Mulai</label>
-                      <input 
-                        type="time" 
-                        className="form-control"
-                        name="waktu_mulai"
-                        value={formData.waktu_mulai}
-                        onChange={handleModalChange}
-                        required
-                      />
+                      <input type="time" className="form-control" name="waktu_mulai"
+                        value={formData.waktu_mulai} onChange={handleModalChange} required />
                     </div>
                     <div className="col-6 mb-3">
                       <label className="form-label small fw-bold text-muted">Selesai</label>
-                      <input 
-                        type="time" 
-                        className="form-control"
-                        name="waktu_selesai"
-                        value={formData.waktu_selesai}
-                        onChange={handleModalChange}
-                        required
-                      />
+                      <input type="time" className="form-control" name="waktu_selesai"
+                        value={formData.waktu_selesai} onChange={handleModalChange} required />
                     </div>
                   </div>
-
-                  {/* Room Input */}
                   <div className="mb-3">
                     <label className="form-label small fw-bold text-muted">Ruangan</label>
-                    <input 
-                      type="text" 
-                      className="form-control"
-                      name="ruangan"
-                      value={formData.ruangan}
-                      onChange={handleModalChange}
-                      required
-                    />
+                    <input type="text" className="form-control" name="ruangan"
+                      value={formData.ruangan} onChange={handleModalChange} required />
                   </div>
-
                 </div>
                 <div className="modal-footer border-0">
                   <button type="button" className="btn btn-light" onClick={() => setShowModal(false)}>Batal</button>
@@ -221,7 +186,6 @@ const JadwalAsdos = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };
