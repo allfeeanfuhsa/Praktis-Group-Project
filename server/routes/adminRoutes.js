@@ -6,7 +6,7 @@ const checkRole = require('../middleware/rbacMiddleware');
 const bcrypt = require('bcryptjs'); // Needed for creating users
 
 // 1. Import Models (Added 'Praktikum' to the list)
-const { User, Role, PraktikumUserRole, Praktikum, UserRole } = require('../models/sql');
+const { User, Role, PraktikumUserRole, Praktikum, UserRole, Pertemuan } = require('../models/sql');
 
 // ==========================================
 // FEATURE 1: DASHBOARD STATS
@@ -198,30 +198,70 @@ router.get('/praktikum', verifyToken, checkRole(['admin']), async (req, res) => 
 });
 
 // 2. Create New Praktikum
-router.post('/praktikum', verifyToken, checkRole(['admin']), async (req, res) => {
-  try {
-    const { mata_kuliah, kelas, tahun_pelajaran, semester, sks, jadwal, ruangan } = req.body;
-    
-    // Validate required fields
-    if (!mata_kuliah || !tahun_pelajaran) {
-        return res.status(400).json({ message: 'Mata Kuliah and Tahun Pelajaran are required' });
+// POST Create Class + AUTO-GENERATE 10 SESSIONS
+router.post('/praktikum', async (req, res) => {
+    try {
+        // 1. Get Data from Body
+        // Admin MUST send 'tanggal_mulai', 'waktu_mulai', 'waktu_selesai' now!
+        const { 
+            mata_kuliah, kode_kelas, tahun_pelajaran, 
+            sks, semester, ruangan,
+            tanggal_mulai, waktu_mulai, waktu_selesai 
+        } = req.body;
+
+        // Validation
+        if (!tanggal_mulai || !waktu_mulai || !waktu_selesai) {
+            return res.status(400).json({ 
+                message: 'Start Date (tanggal_mulai) and Times (waktu_mulai/selesai) are required to generate sessions.' 
+            });
+        }
+
+        // 2. Create the Class (Praktikum)
+        // We construct a descriptive string for 'jadwal' based on the input
+        const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        const startObj = new Date(tanggal_mulai);
+        const dayName = days[startObj.getDay()];
+        const jadwalStr = `${dayName}, ${waktu_mulai} - ${waktu_selesai}`;
+
+        const newClass = await Praktikum.create({
+            mata_kuliah,
+            kode_kelas,
+            tahun_pelajaran,
+            sks,
+            semester,
+            ruangan,
+            jadwal: jadwalStr
+        });
+
+        // 3. AUTO-GENERATE 10 SESSIONS (Pertemuan)
+        const sessions = [];
+        for (let i = 0; i < 10; i++) {
+            // Calculate date: Start Date + (Week * 7 days)
+            const sessionDate = new Date(tanggal_mulai);
+            sessionDate.setDate(sessionDate.getDate() + (i * 7));
+
+            sessions.push({
+                id_praktikum: newClass.id_praktikum,
+                sesi_ke: i + 1,
+                tanggal: sessionDate,       // YYYY-MM-DD
+                waktu_mulai: waktu_mulai,   // HH:MM
+                waktu_selesai: waktu_selesai, // HH:MM
+                ruangan: ruangan
+            });
+        }
+
+        // Bulk insert for performance
+        await Pertemuan.bulkCreate(sessions);
+
+        res.status(201).json({ 
+            message: 'Class and 10 Sessions created successfully!', 
+            data: newClass 
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error creating class: ' + err.message });
     }
-
-    const newLab = await Praktikum.create({
-      mata_kuliah,
-      kelas, // e.g. "A", "B", or "Reguler"
-      tahun_pelajaran,
-      semester,
-      sks,
-      jadwal,
-      ruangan
-    });
-
-    res.json({ message: 'Praktikum created successfully', data: newLab });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Error creating praktikum' });
-  }
 });
 
 // 3. Delete Praktikum

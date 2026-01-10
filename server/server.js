@@ -10,7 +10,6 @@ const connectMongo = require('./config/db.mongo');
 
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const praktikumRoutes = require('./routes/praktikumRoutes');
 const contentRoutes = require('./routes/contentRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -33,7 +32,6 @@ app.get('/', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/praktikum', praktikumRoutes);
 app.use('/api/content', contentRoutes);
 app.use('/api/submission', submissionRoutes);
 app.use('/api/users', userRoutes);

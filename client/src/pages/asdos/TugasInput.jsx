@@ -47,7 +47,6 @@ const TugasInput = () => {
         // Tentukan pesan sukses berdasarkan mode
         const pesan = isEditMode ? "Perubahan berhasil disimpan!" : "Tugas berhasil dipublikasikan!";
         
-        console.log("Data dikirim:", formData);
         alert(pesan);
         
         navigate('/asdos/tugas'); // Kembali ke daftar tugas

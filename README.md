@@ -10,6 +10,7 @@ What we do next:
 4. Testing
 
 
+
 ```
 Praktis Project
 ├─ client
@@ -39,9 +40,12 @@ Praktis Project
 │  │  │  ├─ ProtectedRoute.jsx
 │  │  │  ├─ SidebarAdmin.jsx
 │  │  │  ├─ SidebarAsdos.jsx
-│  │  │  └─ SidebarMhs.jsx
+│  │  │  ├─ SidebarMhs.jsx
+│  │  │  └─ SidebarNavLink.jsx
 │  │  ├─ context
 │  │  │  └─ authContext.jsx
+│  │  ├─ hooks
+│  │  │  └─ useForm.js
 │  │  ├─ index.css
 │  │  ├─ layouts
 │  │  │  ├─ LayoutAdmin.jsx
@@ -61,6 +65,7 @@ Praktis Project
 │  │  │  │  ├─ Materi.jsx
 │  │  │  │  ├─ MateriInput.jsx
 │  │  │  │  ├─ Penilaian.jsx
+│  │  │  │  ├─ SessionDetail.jsx
 │  │  │  │  ├─ Tugas.jsx
 │  │  │  │  └─ TugasInput.jsx
 │  │  │  ├─ auth
@@ -70,6 +75,7 @@ Praktis Project
 │  │  │     ├─ Dashboard.jsx
 │  │  │     ├─ Jadwal.jsx
 │  │  │     ├─ Materi.jsx
+│  │  │     ├─ SessionDetail.jsx
 │  │  │     ├─ Tugas.jsx
 │  │  │     └─ TugasUpload.jsx
 │  │  └─ utils
@@ -86,7 +92,6 @@ Praktis Project
    │  ├─ authController.js
    │  ├─ contentController.js
    │  ├─ praktikumController.js
-   │  ├─ sessionController.js
    │  ├─ submissionController.js
    │  └─ userController.js
    ├─ middleware
@@ -116,7 +121,6 @@ Praktis Project
    │  ├─ adminRoutes.js
    │  ├─ authRoutes.js
    │  ├─ contentRoutes.js
-   │  ├─ praktikumRoutes.js
    │  ├─ submissionRoutes.js
    │  └─ userRoutes.js
    ├─ seed.js

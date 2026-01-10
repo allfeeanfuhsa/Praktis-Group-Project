@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
+import { useForm } from '../../hooks/useForm';
 
 const ManajemenUser = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Form State
-  const [formData, setFormData] = useState({ nama: '', email: '', password: '', role: 'mahasiswa', nim: '' });
+  const { formData, handleChange, reset } = useForm({ 
+    nama: '', 
+    email: '', 
+    password: '', 
+    role: 'mahasiswa', 
+    nim: '' 
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -35,8 +40,8 @@ const ManajemenUser = () => {
     try {
       await api.post('/api/admin/users', formData);
       alert('User created!');
-      fetchUsers(); // Refresh list
-      setFormData({ nama: '', email: '', password: '', role: 'mahasiswa', nim: '' }); // Reset form
+      fetchUsers();
+      reset();
     } catch (err) {
       alert(err.response?.data?.message || 'Error creating user');
     }
@@ -53,22 +58,22 @@ const ManajemenUser = () => {
             <form onSubmit={handleSubmit} className="row g-3">
             <div className="col-md-3">
                 <input type="text" className="form-control" placeholder="Nama Lengkap" 
-                value={formData.nama} onChange={e=>setFormData({...formData, nama: e.target.value})} required/>
+                name="nama" value={formData.nama} onChange={handleChange} required/>
             </div>
             <div className="col-md-2">
                 <input type="text" className="form-control" placeholder="NIM" 
-                value={formData.nim} onChange={e=>setFormData({...formData, nim: e.target.value})}/>
+                name="nim" value={formData.nim} onChange={handleChange}/>
             </div>
             <div className="col-md-3">
                 <input type="email" className="form-control" placeholder="Email" 
-                value={formData.email} onChange={e=>setFormData({...formData, email: e.target.value})} required/>
+                name="email" value={formData.email} onChange={handleChange} required/>
             </div>
             <div className="col-md-2">
                 <input type="password" className="form-control" placeholder="Password" 
-                value={formData.password} onChange={e=>setFormData({...formData, password: e.target.value})} required/>
+                name="password" value={formData.password} onChange={handleChange} required/>
             </div>
             <div className="col-md-2">
-                <select className="form-select" value={formData.role} onChange={e=>setFormData({...formData, role: e.target.value})}>
+                <select className="form-select" name="role" value={formData.role} onChange={handleChange}>
                 <option value="mahasiswa">Mahasiswa</option>
                 <option value="admin">Admin</option>
                 </select>

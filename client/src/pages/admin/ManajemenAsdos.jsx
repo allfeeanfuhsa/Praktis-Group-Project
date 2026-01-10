@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
+import { useForm } from '../../hooks/useForm';
 
 const ManajemenAsdos = () => {
   // Data States
   const [praktikums, setPraktikums] = useState([]);
-  const [users, setUsers] = useState([]); // All potential candidates (students)
+  const [users, setUsers] = useState([]);
   const [currentAsdos, setCurrentAsdos] = useState([]);
   
   // Selection States
@@ -19,13 +20,10 @@ const ManajemenAsdos = () => {
     const fetchInitData = async () => {
       try {
         const [resPrak, resUsers] = await Promise.all([
-            api.get('/api/admin/praktikum'), // Get List of Classes
-            api.get('/api/admin/users')      // Get List of Students
+            api.get('/api/admin/praktikum'),
+            api.get('/api/admin/users')
         ]);
         setPraktikums(resPrak.data);
-        
-        // Filter users: Only show students (or everyone) to be assigned
-        // Optional: Filter out existing admins if you want
         setUsers(resUsers.data); 
       } catch (err) {
         console.error("Error loading init data", err);

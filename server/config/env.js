@@ -1,12 +1,6 @@
 // server/config/env.js
 require('dotenv').config();
 
-// DEBUGGING: Print loaded variables to the terminal
-console.log("--- DEBUG ENV VARS ---");
-console.log("PORT:", process.env.PORT);
-console.log("JWT_SECRET:", process.env.JWT_SECRET ? "Exists (Safe to show)" : "❌ UNDEFINED");
-console.log("----------------------");
-
 const requiredVars = ['MONGO_URI', 'MYSQL_HOST', 'JWT_SECRET']; // <--- Added JWT_SECRET here
 
 requiredVars.forEach((key) => {

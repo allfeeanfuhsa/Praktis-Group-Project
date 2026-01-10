@@ -34,10 +34,6 @@ const Penilaian = () => {
 
   // Fungsi simpan per baris
   const handleSave = (mahasiswa) => {
-    console.log("Menyimpan nilai untuk:", mahasiswa.nama);
-    console.log("Nilai:", mahasiswa.nilai);
-    console.log("Feedback:", mahasiswa.feedback);
-    
     alert(`Nilai untuk ${mahasiswa.nama} berhasil disimpan!`);
   };
 

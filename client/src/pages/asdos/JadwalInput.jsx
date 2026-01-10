@@ -27,8 +27,6 @@ const JadwalInput = () => {
         e.preventDefault(); // Mencegah reload halaman
         
         // Di sini nanti logika kirim ke Database/API
-        console.log("Data yang disimpan:", formData);
-        
         // Simulasi sukses & kembali ke halaman jadwal
         alert("Jadwal Berhasil Disimpan!");
         navigate('/asdos/jadwal'); 

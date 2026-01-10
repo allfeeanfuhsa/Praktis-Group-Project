@@ -1,7 +1,7 @@
 // server/controllers/authController.js
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { User, Role, PraktikumUserRole } = require('../models/sql'); // Import PraktikumUserRole
+const { User, Role, PraktikumUserRole } = require('../models/sql');
 const env = require('../config/env');
 
 exports.login = async (req, res) => {
@@ -51,7 +51,7 @@ exports.login = async (req, res) => {
         id: user.id_user,
         nama: user.nama,
         email: user.email,
-        roles: roles // Now contains ['mahasiswa', 'asdos']
+        roles: roles
       }
     });
 
@@ -61,7 +61,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// Simple check to see if token works
 exports.me = (req, res) => {
-    res.json(req.user); // Returns the decoded token data
+    res.json(req.user);
 };

@@ -34,7 +34,6 @@ const MateriInput = () => {
         }
 
         // Simulasi Upload
-        console.log("Mengupload:", formData);
         alert(`Materi "${formData.judul}" berhasil diupload!`);
         
         // Redirect kembali ke halaman daftar materi

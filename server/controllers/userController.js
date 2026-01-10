@@ -1,15 +1,16 @@
 // server/controllers/userController.js
 const { User } = require('../models/sql');
 const bcrypt = require('bcryptjs');
+const response = require('../utils/responseHelper');
 
 exports.getProfile = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['password'] } // Never send password back
+      attributes: { exclude: ['password'] }
     });
-    res.json(user);
+    response.success(res, 200, 'Profile retrieved', user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    response.error(res, 500, error.message);
   }
 };
 
@@ -24,8 +25,8 @@ exports.updateProfile = async (req, res) => {
     }
 
     await user.save();
-    res.json({ message: 'Profile updated successfully' });
+    response.success(res, 200, 'Profile updated successfully', user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    response.error(res, 500, error.message);
   }
 };

@@ -1,23 +1,18 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import logoPA from '../assets/img/logo_pa.jpeg'; // Pastikan path logo benar
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../context/authContext';
+import SidebarNavLink from './SidebarNavLink';
+import logoPA from '../assets/img/logo_pa.jpeg';
 
 const SidebarMhs = () => {
-    const navigate = useNavigate();
+    const { logout } = useAuth();
 
     const handleLogout = (e) => {
         e.preventDefault();
-        const confirmLogout = window.confirm("Yakin ingin keluar?");
-        if (confirmLogout) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/';
+        if (window.confirm("Yakin ingin keluar?")) {
+            logout();
         }
     };
-
-    // Helper untuk class Active (agar kodingan lebih rapi)
-    const activeClass = "list-group-item list-group-item-action bg-transparent rounded-3 mb-2 active text-primary fw-bold bg-primary bg-opacity-10";
-    const inactiveClass = "list-group-item list-group-item-action bg-transparent rounded-3 mb-2 text-secondary";
 
     const subMenuActive = "list-group-item list-group-item-action bg-transparent border-0 py-2 small text-primary fw-bold";
     const subMenuInactive = "list-group-item list-group-item-action bg-transparent border-0 py-2 small text-muted";
@@ -37,13 +32,11 @@ const SidebarMhs = () => {
             {/* MENU LIST */}
             <div className="list-group list-group-flush px-3 py-4">
 
-                {/* Dashboard Link */}
-                <NavLink
-                    to="/mahasiswa/dashboard"
-                    className={({ isActive }) => isActive ? activeClass : inactiveClass}
-                >
-                    <i className="bi bi-grid-fill me-2"></i>Dashboard
-                </NavLink>
+                <SidebarNavLink 
+                    to="/mahasiswa/dashboard" 
+                    icon="bi-grid-fill" 
+                    label="Dashboard" 
+                />
 
                 <small className="text-muted fw-bold text-uppercase mt-4 mb-2 d-block px-2" style={{ fontSize: '0.75rem' }}>
                     Kelas Saya

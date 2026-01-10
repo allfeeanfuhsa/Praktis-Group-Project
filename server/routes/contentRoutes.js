@@ -6,66 +6,58 @@ const contentController = require('../controllers/contentController');
 // Middlewares
 const verifyToken = require('../middleware/authMiddleware');
 const checkRole = require('../middleware/rbacMiddleware');
-const checkEnrollment = require('../middleware/enrollmentMiddleware');
 const createUploader = require('../middleware/uploadMiddleware');
 
-// Create the specific uploader for Materials (Lecture Slides)
+// Uploaders
 const uploadMaterial = createUploader('materials');
+const uploadTask = createUploader('tasks'); 
 
-// GLOBAL PROTECTION: All content routes require a valid Token
 router.use(verifyToken);
 
 // =========================================================================
-// TUGAS (TASKS) ROUTES
+// 1. SESSION ROUTES (SQL: Pertemuan)
 // =========================================================================
 
-/**
- * @route   POST /api/content/tugas
- * @desc    Create a new Task
- * @access  Asdos (of that specific class) or Admin
- * @note    checkEnrollment(['asdos']) ensures the user is the teacher for this class
- */
-router.post('/tugas', 
-  checkRole(['asdos', 'admin']), // 1. Global Role Check
-  checkEnrollment(['asdos']),    // 2. Context Check (SQL Verification)
-  contentController.createTask   // 3. Logic
+// Create Session (The one you are trying to hit!)
+router.post('/session', 
+  checkRole(['asdos', 'admin']), 
+  contentController.createSession
 );
 
-/**
- * @route   GET /api/content/tugas/session/:pertemuan_id
- * @desc    Get all tasks for a specific session
- * @access  Enrolled Users (Students & Asdos)
- * @note    checkEnrollment() without args allows any enrolled user
- */
-router.get('/tugas/session/:pertemuan_id', 
-  checkEnrollment(),             // 1. Ensures user belongs to the class
-  contentController.getTasksBySession
+// Get Session List (Timeline)
+router.get('/session/list/:id_praktikum', 
+  contentController.getSessionsByClass
+);
+
+// Delete Session
+router.delete('/session/:id', 
+  checkRole(['asdos', 'admin']), 
+  contentController.deleteSession
 );
 
 // =========================================================================
-// MATERI (MATERIALS) ROUTES -- NEW SECTION
+// 2. CONTENT ROUTES (NoSQL: Materi & Tugas)
 // =========================================================================
 
-/**
- * @route   POST /api/content/materi
- * @desc    Upload Lecture Slides/PDFs
- * @access  Asdos (of that class) or Admin
- * @body    multipart/form-data: { pertemuan_id, judul, files: [PDF/PPT] }
- */
+// Upload Material
 router.post('/materi',
   checkRole(['asdos', 'admin']),
-  checkEnrollment(['asdos']), // Ensures user teaches this class
-  uploadMaterial.array('files', 5), // Allow up to 5 files
-  contentController.createMaterial // <--- You need to add this function next
+  uploadMaterial.array('files', 5),
+  contentController.createMaterial
 );
 
-/**
- * @route   GET /api/content/materi/session/:pertemuan_id
- * @desc    Get all materials for a session
- */
-router.get('/materi/session/:pertemuan_id', 
-  checkEnrollment(),
-  contentController.getMaterialsBySession // <--- You need to add this function next
+// Create Task
+router.post('/tugas', 
+  checkRole(['asdos', 'admin']),
+  uploadTask.array('files', 5), 
+  contentController.createTask
 );
+
+// Get Content (Used by Session Detail page later)
+router.get('/materi/session/:pertemuan_id', contentController.getMaterialsBySession);
+router.get('/tugas/session/:pertemuan_id', contentController.getTasksBySession);
+
+// Download Material File
+router.get('/materi/:materiId/download/:fileIndex', contentController.downloadMaterialFile);
 
 module.exports = router;

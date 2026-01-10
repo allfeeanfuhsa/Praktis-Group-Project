@@ -1,5 +1,6 @@
 // server/controllers/praktikumController.js
 const { Praktikum, User, PraktikumUserRole, Role } = require('../models/sql');
+const response = require('../utils/responseHelper');
 
 // 1. Create a new Class (Admin Only)
 exports.createPraktikum = async (req, res) => {
@@ -15,9 +16,9 @@ exports.createPraktikum = async (req, res) => {
       ruangan
     });
 
-    res.status(201).json({ message: 'Class created successfully', data: newClass });
+    response.success(res, 201, 'Class created successfully', newClass);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    response.error(res, 500, error.message);
   }
 };
 
@@ -25,9 +26,9 @@ exports.createPraktikum = async (req, res) => {
 exports.getAllPraktikums = async (req, res) => {
   try {
     const classes = await Praktikum.findAll();
-    res.json(classes);
+    response.success(res, 200, 'Classes retrieved', classes);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    response.error(res, 500, error.message);
   }
 };
 
@@ -35,29 +36,25 @@ exports.getAllPraktikums = async (req, res) => {
 exports.enrollUser = async (req, res) => {
   try {
     const { id_praktikum } = req.params;
-    const { id_user, role_name } = req.body; // e.g. role_name: 'asdos' or 'mahasiswa'
+    const { id_user, role_name } = req.body;
 
-    // Find the Role ID based on string name
     const role = await Role.findOne({ where: { deskripsi: role_name } });
-    if (!role) return res.status(404).json({ message: 'Role not found' });
+    if (!role) return response.error(res, 404, 'Role not found');
 
-    // Check if user exists
     const user = await User.findByPk(id_user);
-    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user) return response.error(res, 404, 'User not found');
 
-    // Add to junction table
     await PraktikumUserRole.create({
       id_praktikum,
       id_user,
       id_role: role.id_role
     });
 
-    res.json({ message: `User enrolled as ${role_name} successfully` });
+    response.success(res, 201, `User enrolled as ${role_name} successfully`);
   } catch (error) {
-    // Handle duplicate entry error
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ message: 'User is already enrolled in this class' });
+      return response.error(res, 400, 'User is already enrolled in this class');
     }
-    res.status(500).json({ message: error.message });
+    response.error(res, 500, error.message);
   }
 };

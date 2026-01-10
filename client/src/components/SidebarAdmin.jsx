@@ -1,6 +1,6 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { useAuth } from '../context/authContext'; // 1. Import Context
+import { useAuth } from '../context/authContext';
+import SidebarNavLink from './SidebarNavLink';
 
 const SidebarAdmin = () => {
     // 2. Get logout function from context
@@ -20,42 +20,29 @@ const SidebarAdmin = () => {
             </div>
 
             <div className="list-group list-group-flush my-3">
-                <NavLink
-                    to="/admin/dashboard"
-                    className={({ isActive }) =>
-                        `list-group-item list-group-item-action bg-transparent ${isActive ? 'active' : ''}`
-                    }
-                >
-                    <i className="bi bi-speedometer2 me-2"></i>Dashboard
-                </NavLink>
+                <SidebarNavLink 
+                    to="/admin/dashboard" 
+                    icon="bi-speedometer2" 
+                    label="Dashboard" 
+                />
 
-                <NavLink
-                    to="/admin/asdos-manager"
-                    className={({ isActive }) =>
-                        `list-group-item list-group-item-action bg-transparent ${isActive ? 'active' : ''}`
-                    }
-                >
-                    {/* Changed icon and text */}
-                    <i className="bi bi-person-badge me-2"></i>Manajemen Asdos
-                </NavLink>
+                <SidebarNavLink 
+                    to="/admin/asdos-manager" 
+                    icon="bi-person-badge" 
+                    label="Manajemen Asdos" 
+                />
 
-                {/* --- NEW LINK: Manajemen User --- */}
-                <NavLink
-                    to="/admin/users"
-                    className={({ isActive }) =>
-                        `list-group-item list-group-item-action bg-transparent ${isActive ? 'active' : ''}`
-                    }
-                >
-                    <i className="bi bi-people me-2"></i>Manajemen User
-                </NavLink>
+                <SidebarNavLink 
+                    to="/admin/users" 
+                    icon="bi-people" 
+                    label="Manajemen User" 
+                />
 
-                {/* --- NEW LINK: Manajemen Praktikum --- */}
-                <NavLink
-                    to="/admin/praktikum"
-                    className={({ isActive }) => `list-group-item list-group-item-action bg-transparent ${isActive ? 'active' : ''}`}
-                >
-                    <i className="bi bi-journal-bookmark me-2"></i>Manajemen Praktikum
-                </NavLink>
+                <SidebarNavLink 
+                    to="/admin/praktikum" 
+                    icon="bi-journal-bookmark" 
+                    label="Manajemen Praktikum" 
+                />
 
                 <button
                     onClick={handleLogout}

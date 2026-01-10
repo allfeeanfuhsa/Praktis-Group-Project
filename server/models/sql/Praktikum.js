@@ -1,4 +1,3 @@
-// server/models/sql/Praktikum.js
 module.exports = (sequelize, DataTypes) => {
   const Praktikum = sequelize.define('Praktikum', {
     id_praktikum: {
@@ -10,12 +9,23 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING(150),
       allowNull: false
     },
+    // ✅ UPDATE THIS FIELD
+    kode_kelas: { 
+      type: DataTypes.STRING(20), // Matches your VARCHAR(20)
+      allowNull: true
+    },
     tahun_pelajaran: {
       type: DataTypes.STRING(9),
       allowNull: false
     },
-    jadwal: { type: DataTypes.STRING(50) },
-    ruangan: { type: DataTypes.STRING(50) },
+    jadwal: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    ruangan: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
     sks: {
       type: DataTypes.TINYINT.UNSIGNED,
       allowNull: false
@@ -28,5 +38,6 @@ module.exports = (sequelize, DataTypes) => {
     tableName: 'praktikum',
     timestamps: false
   });
+
   return Praktikum;
 };
