@@ -55,13 +55,3 @@ This file lists all API routes discovered in the repository and the required pro
 | GET | /api/submission/me/:taskId | Yes | Any authenticated | Get my submission for a task | [server/routes/submissionRoutes.js](server/routes/submissionRoutes.js#L1) |
 | POST | /api/submission/me/bulk-check | Yes | Any authenticated | Bulk fetch my submissions for tasks | [server/routes/submissionRoutes.js](server/routes/submissionRoutes.js#L1) |
 | GET | /api/submission/download/:submissionId | Yes | Any authenticated | Duplicate download route (alias) | [server/routes/submissionRoutes.js](server/routes/submissionRoutes.js#L1) |
-
-
-## Notes & Actionables
-- RBAC enforcement is implemented by `checkRole(['...'])` in [server/middleware/rbacMiddleware.js](server/middleware/rbacMiddleware.js#L1).
-- Observed issues to fix:
-  - Several admin-intended endpoints in `server/routes/userRoutes.js` have role checks commented out — they are only protected by `verifyToken` currently.
-  - `POST /api/admin/praktikum` in `server/routes/adminRoutes.js` lacks `verifyToken`/`checkRole` and is effectively unprotected.
-  - Duplicate submission download endpoints exist: `/api/submission/:submissionId/download` and `/api/submission/download/:submissionId`.
-
-If you want, I can open a branch and prepare a small PR to add the missing RBAC checks and remove/standardize duplicate routes.
