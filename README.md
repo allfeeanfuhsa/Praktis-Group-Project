@@ -4,6 +4,8 @@ Short summary
 ---------------
 This repository contains a full-stack student practical management system built for a university practicals course. The frontend is a React + Vite single-page app in the `client/` folder. The backend is an Express-based API in the `server/` folder that uses MongoDB (for document data like materials/submissions) and a relational DB via Sequelize/mysql2 for core relational models.
 
+The Prototype of this project has also been deployed on a Shared Hosting Infrastructure provided by Domainesia and can also be accessed at https://praktis-project.site
+
 Key features
 ------------
 - Role-based access: Admin, Asdos (assistant), Mahasiswa (student)
