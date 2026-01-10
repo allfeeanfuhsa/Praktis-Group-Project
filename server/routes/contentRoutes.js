@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const contentController = require('../controllers/contentController');
+const submissionController = require('../controllers/submissionController');
 
 // Middlewares
 const verifyToken = require('../middleware/authMiddleware');
@@ -65,5 +66,11 @@ router.get('/tugas/session/:pertemuan_id', contentController.getTasksBySession);
 
 // Download Material File
 router.get('/materi/:materiId/download/:fileIndex', contentController.downloadMaterialFile);
+
+router.get('/tugas/:id', contentController.getTaskById);
+
+router.get('/me/:taskId', submissionController.getMySubmission);
+
+router.get('/session/:id', contentController.getSessionById);
 
 module.exports = router;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/authContext';
-import api from '../utils/api'; // Use your API utility
+import api from '../utils/api'; 
 import logoPA from '../assets/img/logo_pa.jpeg';
 
 const SidebarAsdos = () => {
@@ -14,7 +14,11 @@ const SidebarAsdos = () => {
         const fetchClasses = async () => {
             try {
                 const res = await api.get('/api/users/asdos-dashboard');
-                setMyClasses(res.data.myClasses);
+                
+                // === FIX 1: USE THE CORRECT KEY 'classes' ===
+                // Added || [] to ensure it's always an array
+                setMyClasses(res.data.classes || []); 
+                
             } catch (error) {
                 console.error("Sidebar load error", error);
             } finally {
@@ -55,7 +59,7 @@ const SidebarAsdos = () => {
                 {/* DYNAMIC CLASS MENU */}
                 {loading ? (
                     <div className="text-center py-3 small text-muted">Loading Menu...</div>
-                ) : myClasses.length === 0 ? (
+                ) : !myClasses || myClasses.length === 0 ? (
                     <div className="text-center py-3 small text-muted">Belum ada kelas assigned.</div>
                 ) : (
                     <>
@@ -74,9 +78,10 @@ const SidebarAsdos = () => {
                                     aria-expanded="false"
                                     aria-controls={`menu-${cls.id_praktikum}`}
                                 >
-                                    <span className="text-truncate" title={cls.mata_kuliah}>
+                                    {/* === FIX 2: Use 'nama_praktikum' or fallback to 'mata_kuliah' === */}
+                                    <span className="text-truncate" title={cls.nama_praktikum || cls.mata_kuliah}>
                                         <i className="bi bi-journal-code me-2 text-primary"></i>
-                                        {cls.mata_kuliah}
+                                        {cls.nama_praktikum || cls.mata_kuliah}
                                     </span>
                                     <i className="bi bi-chevron-down small"></i>
                                 </a>

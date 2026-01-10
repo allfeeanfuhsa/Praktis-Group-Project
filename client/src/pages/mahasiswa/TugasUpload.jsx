@@ -1,163 +1,252 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
+import api from '../../utils/api';
 
 const TugasUpload = () => {
-    const [searchParams] = useSearchParams();
-    const taskId = searchParams.get('id');
-    const navigate = useNavigate();
+  const { id_praktikum, id_tugas } = useParams();
+  
+  const [task, setTask] = useState(null);
+  const [submission, setSubmission] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Upload State
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
-    // 1. State untuk Data Tugas (Simulasi Database)
-    const [taskData, setTaskData] = useState(null);
+  // 1. Fetch Data
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      // Fetch Task
+      const taskRes = await api.get(`/api/content/tugas/${id_tugas}`); 
+      setTask(taskRes.data);
 
-    // 2. State untuk Form Upload
-    const [file, setFile] = useState(null);
-    const [catatan, setCatatan] = useState("");
+      // Fetch Submission
+      const subRes = await api.get(`/api/submission/me/${id_tugas}`);
+      setSubmission(subRes.data);
 
-    // 3. Effect: Load data berdasarkan ID saat halaman dibuka
-    useEffect(() => {
-        // Ceritanya ini ambil data dari Backend
-        if (taskId === '1') {
-            setTaskData({
-                id: 1,
-                judul: "Tugas 1: Analisis Model Bisnis",
-                deadline: "12 Oktober 2025, 23:59",
-                instruksi: "Buatlah analisis SWOT dari perusahaan Tokopedia. Jelaskan Strength, Weakness, Opportunity, dan Threat mereka dalam 5 tahun terakhir.",
-                status: "Pending", // Belum dikumpulkan
-                nilai: null
-            });
-        } else if (taskId === '2') {
-            setTaskData({
-                id: 2,
-                judul: "Tugas 2: Landing Page HTML",
-                deadline: "20 Oktober 2025, 23:59",
-                instruksi: "Membuat struktur landing page.",
-                status: "Graded", // Sudah dinilai
-                nilai: 85,
-                feedback: "Codingan rapi, mantap!",
-                fileUploaded: "landing_page_daffa.zip"
-            });
-        }
-    }, [taskId]);
+    } catch (err) {
+      if (err.response && err.response.status !== 404) {
+          console.error("Error loading data", err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // 4. Handle Submit
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!file) {
-            alert("Mohon pilih file terlebih dahulu!");
-            return;
-        }
-        
-        // Simulasi Upload
-        alert(`Tugas "${taskData.judul}" berhasil dikumpulkan!`);
-        navigate('/mahasiswa/tugas'); // Balik ke menu list
-    };
+  useEffect(() => {
+    fetchData();
+  }, [id_tugas]);
 
-    // Jika data belum loading
-    if (!taskData) return <div className="p-5 text-center">Loading...</div>;
+  // 2. Handlers
+  const handleFileChange = (e) => {
+      if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
+  };
 
-    return (
-        <div className="container-fluid">
-            {/* Tombol Kembali */}
-            <div className="mb-3">
-                <Link to="/mahasiswa/tugas" className="text-decoration-none text-muted fw-bold">
-                    <i className="bi bi-arrow-left me-1"></i> Kembali ke Daftar Tugas
-                </Link>
-            </div>
-            
-            <div className="row">
-                {/* KOLOM KIRI: INFO SOAL */}
-                <div className="col-md-7">
-                    <div className="card border-0 shadow-sm mb-4">
-                        <div className="card-body p-4">
-                            <h3 className="fw-bold text-primary">{taskData.judul}</h3>
-                            
-                            {/* Badge Deadline */}
-                            <div className={`badge mb-3 ${taskData.status === 'Graded' ? 'bg-success' : 'bg-danger'}`}>
-                                <i className="bi bi-clock me-1"></i> Deadline: {taskData.deadline}
-                            </div>
-                            
-                            <hr />
-                            
-                            <h6 className="fw-bold">Instruksi:</h6>
-                            <p>{taskData.instruksi}</p>
-                            <p>Format file: <strong>.PDF / .ZIP</strong></p>
-                            
-                            {/* Tombol Download Soal (Dummy) */}
-                            <div className="mt-4 p-3 bg-light rounded border border-dashed d-flex align-items-center">
-                                <i className="bi bi-file-earmark-arrow-down fs-3 me-3 text-primary"></i>
-                                <div>
-                                    <h6 className="mb-0 fw-bold">File Soal Pendukung</h6>
-                                    <a href="#" className="text-decoration-none small">Download Soal.pdf</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+  const handleUpload = async (e) => {
+    e.preventDefault();
+    if (!selectedFile) return alert("Pilih file dahulu!");
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('tugas_id', id_tugas);
+      formData.append('file', selectedFile);
+
+      await api.post('/api/submission', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      alert('Tugas berhasil dikumpulkan!');
+      setSelectedFile(null);
+      fetchData(); 
+    } catch (err) {
+      alert(err.response?.data?.message || "Gagal upload");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // NEW: Download My Own Submission
+  const handleDownloadMyFile = async () => {
+      if (!submission) return;
+      try {
+          // We assume this endpoint exists (we will add it in Step 2)
+          const response = await api.get(`/api/submission/download/${submission._id}`, {
+              responseType: 'blob'
+          });
+          
+          // Create blob link to download
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const link = document.createElement('a');
+          link.href = url;
+          // Use filename from DB or fallback
+          link.setAttribute('download', submission.file.filename || 'tugas_saya.pdf'); 
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+      } catch (err) {
+          alert("Gagal mendownload file.");
+      }
+  };
+
+  // Helper: Format Date
+  const formatDate = (date) => {
+    return new Date(date).toLocaleDateString('id-ID', {
+      day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
+  if (loading) return <div className="text-center py-5">Loading...</div>;
+  if (!task) return <div className="alert alert-danger">Tugas tidak ditemukan.</div>;
+
+  return (
+    <div className="container-fluid px-0">
+      
+      {/* HEADER */}
+      <div className="mb-4">
+        <Link to={`/mahasiswa/kelas/${id_praktikum}/tugas`} className="text-decoration-none text-muted mb-2 d-inline-block">
+            <i className="bi bi-arrow-left me-1"></i> Kembali ke Daftar
+        </Link>
+        <h3 className="fw-bold">{task.judul}</h3>
+      </div>
+
+      <div className="row">
+        {/* LEFT COLUMN: Task Details */}
+        <div className="col-md-7 mb-4">
+          <div className="card shadow-sm border-0 rounded-4">
+            <div className="card-body p-4">
+              <h5 className="fw-bold mb-3">Instruksi Tugas</h5>
+              <p className="text-secondary" style={{whiteSpace: 'pre-line'}}>
+                {task.deskripsi || "Tidak ada deskripsi."}
+              </p>
+              
+              <div className="d-flex align-items-center gap-3 mt-4 p-3 bg-light rounded-3 border">
+                <i className="bi bi-clock-history fs-4 text-warning"></i>
+                <div>
+                  <small className="text-muted d-block fw-bold text-uppercase">Batas Waktu</small>
+                  <span className="fw-bold">{formatDate(task.tenggat_waktu)}</span>
                 </div>
+              </div>
 
-                {/* KOLOM KANAN: FORM PENGUMPULAN / HASIL NILAI */}
-                <div className="col-md-5">
-                    <div className="card border-0 shadow-sm">
-                        <div className="card-header bg-white py-3 fw-bold border-bottom">
-                            Submission (Pengumpulan)
-                        </div>
-                        
-                        <div className="card-body p-4">
-                            
-                            {/* KONDISI 1: JIKA SUDAH DINILAI (Show Nilai) */}
-                            {taskData.status === 'Graded' ? (
-                                <div className="text-center py-3">
-                                    <i className="bi bi-check-circle-fill text-success fs-1 mb-2"></i>
-                                    <h5 className="fw-bold">Tugas Selesai Dinilai</h5>
-                                    <div className="display-4 fw-bold text-success my-3">{taskData.nilai}/100</div>
-                                    
-                                    <div className="alert alert-light border text-start">
-                                        <strong>Feedback Dosen:</strong> <br/>
-                                        "{taskData.feedback}"
-                                    </div>
-
-                                    <div className="text-muted small text-start mt-3">
-                                        File terupload: <i className="bi bi-file-earmark me-1"></i> {taskData.fileUploaded}
-                                    </div>
-                                </div>
-                            ) : (
-                                /* KONDISI 2: JIKA BELUM (Show Form Upload) */
-                                <form onSubmit={handleSubmit}>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold small text-muted">Upload Jawaban</label>
-                                        <div className="p-3 bg-light border border-dashed rounded text-center">
-                                            <input 
-                                                type="file" 
-                                                className="form-control" 
-                                                onChange={(e) => setFile(e.target.files[0])}
-                                                required 
-                                            />
-                                            <small className="text-muted d-block mt-2">Max size: 5MB</small>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="mb-4">
-                                        <label className="form-label fw-bold small text-muted">Catatan (Opsional)</label>
-                                        <textarea 
-                                            className="form-control bg-light border-0" 
-                                            rows="3"
-                                            value={catatan}
-                                            onChange={(e) => setCatatan(e.target.value)}
-                                            placeholder="Pesan untuk asdos..."
-                                        ></textarea>
-                                    </div>
-                                    
-                                    <button type="submit" className="btn btn-success w-100 fw-bold shadow-sm py-2">
-                                        <i className="bi bi-upload me-2"></i> Submit Tugas
-                                    </button>
-                                </form>
-                            )}
-
-                        </div>
-                    </div>
-                </div>
+              {/* Attachments from Asdos */}
+              {task.attachments && task.attachments.length > 0 && (
+                 <div className="mt-4">
+                    <h6 className="fw-bold small text-muted text-uppercase">Lampiran Soal</h6>
+                    {task.attachments.map((file, idx) => (
+                      <div key={idx} className="d-flex align-items-center gap-2 mt-2">
+                         <i className="bi bi-paperclip text-primary"></i>
+                         <span className="text-dark">{file.filename}</span>
+                      </div>
+                    ))}
+                 </div>
+              )}
             </div>
+          </div>
         </div>
-    );
+
+        {/* RIGHT COLUMN: Submission Area */}
+        <div className="col-md-5">
+          <div className="card shadow-sm border-0 rounded-4 h-100">
+            <div className="card-header bg-white py-3 border-bottom-0">
+              <h5 className="mb-0 fw-bold">Status Pengumpulan</h5>
+            </div>
+            <div className="card-body p-4">
+              
+              {/* === STATE: SUBMITTED === */}
+              {submission ? (
+                <div className="text-center">
+                   
+                   {/* 1. Status Badge */}
+                   <div className="mb-4">
+                      <span className={`badge rounded-pill px-3 py-2 ${submission.status === 'terlambat' ? 'bg-danger' : 'bg-success'}`}>
+                          {submission.status === 'terlambat' ? 'Terlambat Mengumpulkan' : 'Diserahkan Tepat Waktu'}
+                      </span>
+                      <p className="text-muted small mt-2 mb-0">
+                        Diserahkan pada: {formatDate(submission.submitted_at)}
+                      </p>
+                   </div>
+
+                   {/* 2. File Receipt Card (The UX Improvement) */}
+                   <div className="card border bg-light mb-4 text-start">
+                      <div className="card-body d-flex align-items-center">
+                          <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 me-3"></i>
+                          <div className="overflow-hidden">
+                              <h6 className="fw-bold mb-0 text-truncate">{submission.file.filename}</h6>
+                              <small className="text-muted">
+                                  {/* Using submission.file structure from your model */}
+                                  {(submission.file.size / 1024).toFixed(1)} KB
+                              </small>
+                          </div>
+                          <button 
+                              onClick={handleDownloadMyFile}
+                              className="btn btn-sm btn-outline-secondary ms-auto"
+                              title="Download file saya"
+                          >
+                              <i className="bi bi-download"></i>
+                          </button>
+                      </div>
+                   </div>
+
+                   {/* 3. Grading Result */}
+                   {submission.nilai !== undefined && submission.nilai !== null ? (
+                     <div className="text-start border-top pt-3">
+                        <h6 className="fw-bold small text-muted text-uppercase">Nilai & Feedback</h6>
+                        <div className="d-flex align-items-center gap-3 mb-2">
+                            <h2 className="fw-bold text-primary mb-0">{submission.nilai}/100</h2>
+                        </div>
+                        {submission.feedback && (
+                          <div className="alert alert-info d-flex gap-2">
+                             <i className="bi bi-info-circle-fill mt-1"></i>
+                             <div>{submission.feedback}</div>
+                          </div>
+                        )}
+                     </div>
+                   ) : (
+                     <div className="alert alert-warning d-flex align-items-center gap-2 text-start small">
+                        <i className="bi bi-hourglass-split"></i>
+                        <div>Menunggu penilaian dari Asisten Dosen.</div>
+                     </div>
+                   )}
+
+                </div>
+              ) : (
+                
+                /* === STATE: NOT SUBMITTED === */
+                <form onSubmit={handleUpload}>
+                   <div className="text-center mb-4">
+                      <div className="bg-light rounded-circle d-inline-flex p-4 mb-3 text-muted">
+                          <i className="bi bi-cloud-upload fs-1"></i>
+                      </div>
+                      <p className="text-muted small">Belum ada file yang dikumpulkan.</p>
+                   </div>
+
+                   <div className="mb-3">
+                      <label className="form-label fw-bold small">Upload File Jawaban</label>
+                      <input 
+                        type="file" 
+                        className="form-control"
+                        onChange={handleFileChange}
+                        required
+                      />
+                   </div>
+
+                   <button 
+                     type="submit" 
+                     className="btn btn-primary w-100 fw-bold py-2 rounded-3"
+                     disabled={uploading}
+                   >
+                      {uploading ? 'Sedang Mengupload...' : <><i className="bi bi-send-fill me-2"></i>Kumpulkan Tugas</>}
+                   </button>
+                </form>
+              )}
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default TugasUpload;

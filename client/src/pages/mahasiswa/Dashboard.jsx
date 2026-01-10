@@ -4,18 +4,25 @@ import api from '../../utils/api';
 
 const Dashboard = () => {
     const [loading, setLoading] = useState(true);
+    // Initialize stats with defaults to prevent errors
     const [stats, setStats] = useState({ activeClasses: 0, assignmentsPending: 0 });
     const [myClasses, setMyClasses] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Call the new endpoint
                 const res = await api.get('/api/users/mahasiswa-dashboard');
-                setStats(res.data.stats);
-                setMyClasses(res.data.myClasses);
+                
+                // === FIX 1: MATCH THE CONTROLLER KEYS ===
+                // Controller sends: { stats: {...}, enrolledClasses: [...] }
+                setStats(res.data.stats || { activeClasses: 0, assignmentsPending: 0 });
+                
+                // === FIX 2: HANDLE VARIABLE NAME & SAFETY CHECK ===
+                // Use 'enrolledClasses' and default to empty array if missing
+                setMyClasses(res.data.enrolledClasses || []); 
+
             } catch (err) {
-                console.error(err);
+                console.error("Dashboard Fetch Error:", err);
             } finally {
                 setLoading(false);
             }
@@ -44,6 +51,9 @@ const Dashboard = () => {
                         </div>
                     </div>
                 </div>
+                {/* Note: assignmentsPending logic isn't fully built in backend yet, 
+                   so it might stay 0 for now. That is fine. 
+                */}
                 <div className="col-md-4">
                     <div className="card border-0 shadow-sm p-3">
                         <div className="d-flex justify-content-between align-items-center">
@@ -59,8 +69,13 @@ const Dashboard = () => {
 
             {/* Class List */}
             <h5 className="fw-bold mb-3">Kelas Praktikum Saya</h5>
-            {loading ? <p>Loading...</p> : myClasses.length === 0 ? (
-                <div className="alert alert-warning">Kamu belum terdaftar di kelas praktikum manapun.</div>
+            
+            {loading ? (
+                <div className="text-center py-5 text-muted">Loading data...</div>
+            ) : !myClasses || myClasses.length === 0 ? (
+                <div className="alert alert-warning">
+                    Kamu belum terdaftar di kelas praktikum manapun.
+                </div>
             ) : (
                 <div className="row g-3">
                     {myClasses.map(cls => (
@@ -69,16 +84,27 @@ const Dashboard = () => {
                                 <div className="card-body">
                                     <div className="d-flex justify-content-between mb-2">
                                         <span className="badge bg-primary bg-opacity-10 text-primary">
-                                            {cls.kode_kelas}
+                                            {cls.kode || cls.kode_kelas}
                                         </span>
-                                        <small className="text-muted">{cls.tahun_pelajaran}</small>
+                                        {/* Fallback for fields that might be missing */}
+                                        <small className="text-muted">
+                                            {cls.jadwal || 'Jadwal belum diatur'}
+                                        </small>
                                     </div>
-                                    <h5 className="fw-bold mb-1">{cls.mata_kuliah}</h5>
+                                    <h5 className="fw-bold mb-1">{cls.nama_praktikum || cls.mata_kuliah}</h5>
+                                    
                                     <p className="text-muted small mb-3">
-                                        <i className="bi bi-calendar-event me-2"></i>{cls.jadwal}
+                                        {/* You can add more info here later */}
+                                        <i className="bi bi-person-video3 me-2"></i>Praktikum Aktif
                                     </p>
-                                    <Link to={`/mahasiswa/kelas/${cls.id_praktikum}`} className="btn btn-outline-primary w-100 fw-bold">
-                                        Lihat Materi & Tugas
+
+                                    {/* === FIX 3: DIRECT LINK TO A SUB-PAGE === */}
+                                    {/* Linking directly to /kelas/ID/jadwal because /kelas/ID doesn't exist */}
+                                    <Link 
+                                        to={`/mahasiswa/kelas/${cls.id_praktikum}/jadwal`} 
+                                        className="btn btn-outline-primary w-100 fw-bold"
+                                    >
+                                        Masuk Kelas
                                     </Link>
                                 </div>
                             </div>

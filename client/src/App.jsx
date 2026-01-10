@@ -84,13 +84,12 @@ function App() {
       {/* --- Mahasiswa Routes --- */}
       <Route path="/mahasiswa" element={<ProtectedRoute allowedRoles={['mahasiswa']}><LayoutMhs /></ProtectedRoute>}>
         <Route path="dashboard" element={<DashboardMhs />} />
-        <Route path="jadwal" element={<JadwalMhs />} />
-        <Route path="materi" element={<MateriMhs />} />
-        <Route path="tugas" element={<TugasMhs />} />
-        <Route path="tugas/upload" element={<TugasUpload />} />
-
+        <Route path="kelas/:id_praktikum/jadwal" element={<JadwalMhs />} />
+        <Route path="kelas/:id_praktikum/materi" element={<MateriMhs />} />
+        <Route path="kelas/:id_praktikum/tugas" element={<TugasMhs />} />
+        <Route path="kelas/:id_praktikum/tugas/:id_tugas" element={<TugasUpload />} />
         <Route path="kelas/:id_praktikum" element={<JadwalMhs />} />
-        <Route path="session/:id_pertemuan" element={<SessionDetailMhs />} />
+        <Route path="kelas/:id_praktikum/session/:id_session" element={<SessionDetailMhs />} />
       </Route>
 
     </Routes>

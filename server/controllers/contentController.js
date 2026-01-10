@@ -233,3 +233,28 @@ exports.updateSession = async (req, res, next) => {
     next(error);
   }
 };
+
+// NEW: Get Single Task by ID
+exports.getTaskById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const task = await Tugas.findById(id);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+    res.json(task);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getSessionById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const session = await Pertemuan.findByPk(id);
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+};

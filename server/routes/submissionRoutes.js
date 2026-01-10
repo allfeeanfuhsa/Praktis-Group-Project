@@ -54,4 +54,6 @@ router.get('/task/:taskId',
   submissionController.getSubmissionsByTask
 );
 
+router.get('/download/:submissionId', submissionController.downloadFile);
+
 module.exports = router;

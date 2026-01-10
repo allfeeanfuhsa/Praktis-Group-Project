@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../utils/api';
 
-const Dashboard = () => {
+const DashboardAsdos = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalClasses: 0, totalStudents: 0, pendingGrading: 0 });
   const [myClasses, setMyClasses] = useState([]);
@@ -10,10 +10,16 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch data from our new endpoint
         const res = await api.get('/api/users/asdos-dashboard');
-        setStats(res.data.stats);
-        setMyClasses(res.data.myClasses);
+        
+        // === FIX 1: MATCH CONTROLLER KEYS ===
+        // Controller sends: { stats: {...}, classes: [...] }
+        setStats(res.data.stats || { totalClasses: 0, totalStudents: 0, pendingGrading: 0 });
+        
+        // === FIX 2: HANDLE UNDEFINED DATA ===
+        // The key from controller is 'classes', not 'myClasses'
+        setMyClasses(res.data.classes || []);
+
       } catch (err) {
         console.error("Dashboard error:", err);
       } finally {
@@ -31,7 +37,6 @@ const Dashboard = () => {
           <h2 className="fs-3 fw-bold text-dark mb-0">Dashboard Asisten</h2>
           <p className="text-muted small mb-0">Selamat datang kembali! Berikut ringkasan kelasmu.</p>
         </div>
-        {/* Removed "Buat Kelas" button because Asdos cannot do that */}
       </div>
 
       {/* --- STATS CARDS --- */}
@@ -43,7 +48,7 @@ const Dashboard = () => {
               <div>
                 <h5 className="mb-0 text-muted small text-uppercase fw-bold">Kelas Diampu</h5>
                 <h2 className="mb-0 fw-bold text-primary">
-                  {loading ? "..." : stats.totalClasses}
+                  {stats.totalClasses}
                 </h2>
               </div>
               <div className="bg-primary bg-opacity-10 p-3 rounded-circle text-primary">
@@ -53,14 +58,15 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Card 2: Mahasiswa (Placeholder for now) */}
+        {/* Card 2: Total Mahasiswa (Placeholder) */}
         <div className="col-md-4">
           <div className="card p-3 bg-white border-0 shadow-sm h-100">
             <div className="d-flex justify-content-between align-items-center">
               <div>
                 <h5 className="mb-0 text-muted small text-uppercase fw-bold">Total Mahasiswa</h5>
                 <h2 className="mb-0 fw-bold text-success">
-                  {loading ? "..." : stats.totalStudents}
+                  {/* Backend logic for student count not yet implemented, defaulting to 0 */}
+                  {stats.totalStudents || 0}
                 </h2>
               </div>
               <div className="bg-success bg-opacity-10 p-3 rounded-circle text-success">
@@ -77,7 +83,7 @@ const Dashboard = () => {
               <div>
                 <h5 className="mb-0 text-muted small text-uppercase fw-bold">Perlu Dinilai</h5>
                 <h2 className="mb-0 fw-bold text-warning">
-                  {loading ? "..." : stats.pendingGrading}
+                  {stats.pendingGrading || 0}
                 </h2>
               </div>
               <div className="bg-warning bg-opacity-10 p-3 rounded-circle text-warning">
@@ -88,12 +94,12 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* --- KELAS AKTIF (REAL DATA) --- */}
+      {/* --- KELAS AKTIF --- */}
       <h5 className="fw-bold mb-3">Daftar Kelas Praktikum</h5>
 
       {loading ? (
         <div className="text-center py-5">Loading data kelas...</div>
-      ) : myClasses.length === 0 ? (
+      ) : !myClasses || myClasses.length === 0 ? (
         <div className="alert alert-info border-0 shadow-sm">
           <i className="bi bi-info-circle me-2"></i>
           Kamu belum ditugaskan ke kelas praktikum manapun. Hubungi Admin.
@@ -106,13 +112,18 @@ const Dashboard = () => {
                 <div className="card-body">
                   <div className="d-flex justify-content-between mb-3">
                     <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
-                      Kelas {cls.kode_kelas || 'A'}
+                      {/* Controller returns 'kode', not 'kode_kelas' */}
+                      Kelas {cls.kode || cls.kode_kelas || 'A'}
                     </span>
-                    <small className="text-muted fw-bold">{cls.tahun_pelajaran}</small>
+                    <small className="text-muted fw-bold">
+                        {/* Fallback if semester/year isn't in API yet */}
+                        {cls.tahun_pelajaran || '2023/2024'}
+                    </small>
                   </div>
 
-                  <h5 className="fw-bold mb-1 text-truncate" title={cls.mata_kuliah}>
-                    {cls.mata_kuliah}
+                  {/* Controller returns 'nama_praktikum', not 'mata_kuliah' */}
+                  <h5 className="fw-bold mb-1 text-truncate" title={cls.nama_praktikum}>
+                    {cls.nama_praktikum || cls.mata_kuliah || "Nama Kelas"}
                   </h5>
 
                   <p className="text-muted small mb-3">
@@ -121,8 +132,7 @@ const Dashboard = () => {
                   </p>
 
                   <div className="d-grid gap-2 border-top pt-3">
-                    {/* Link to the Module Manager we built earlier */}
-                    {/* NOTE: Ideally, we pass the ID in the URL so the next page knows which one to open */}
+                    {/* Link to Manage Schedule */}
                     <Link to={`/asdos/kelas/${cls.id_praktikum}/jadwal`} className="btn btn-primary btn-sm fw-bold">
                       <i className="bi bi-gear-fill me-2"></i>Kelola Pertemuan
                     </Link>
@@ -137,4 +147,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default DashboardAsdos;

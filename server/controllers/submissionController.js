@@ -242,3 +242,26 @@ exports.getSubmissionsByTask = async (req, res, next) => {
     next(error);
   }
 };
+
+// NEW: Get Logged-in Student's Submission for a Task
+exports.getMySubmission = async (req, res, next) => {
+  try {
+    const { taskId } = req.params;
+    const userId = req.user.id; // From authMiddleware
+
+    // Find submission matching Task ID + Student ID
+    const submission = await Pengumpulan.findOne({ 
+        tugas_id: taskId, 
+        student_id: userId 
+    });
+
+    if (!submission) {
+      // 404 is actually expected if they haven't submitted yet
+      return res.status(404).json({ message: 'Not submitted yet' });
+    }
+
+    res.json(submission);
+  } catch (error) {
+    next(error);
+  }
+};
