@@ -25,13 +25,14 @@ const Profile = () => {
     });
 
     // Class Assignment State (Admin Only)
-    const [selectedClass, setSelectedClass] = useState('');
+    const [selectedClass, setSelectedClass] = useState([]);
 
     // Permissions
     // If URL has ID, we are viewing someone else. If no ID, we are viewing ourselves.
     const isViewingOther = id && parseInt(id) !== authUser?.id;
     const isSelf = !isViewingOther;
-    const isAdmin = authUser?.role === 'admin';
+    const isAdmin = Array.isArray(authUser?.roles) &&
+        authUser.roles.includes('admin');
     const canAssignClasses = isAdmin && isViewingOther; // Admin viewing someone else
 
     useEffect(() => {
@@ -81,7 +82,7 @@ const Profile = () => {
     const fetchAvailableClasses = async () => {
         try {
             // Ensure this endpoint exists in contentController or adminController
-            const res = await api.get('/api/admin/praktikum-list');
+            const res = await api.get('/api/admin/praktikum');
             setAvailableClasses(res.data || []);
         } catch (err) { console.error("Failed to load class list"); }
     };

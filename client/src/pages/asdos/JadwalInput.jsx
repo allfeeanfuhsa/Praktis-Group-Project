@@ -94,10 +94,11 @@ const JadwalInput = () => {
                                             required
                                         >
                                             <option value="">Pilih Ruangan...</option>
-                                            <option value="Lab Komputer 1">Lab Komputer 1</option>
-                                            <option value="Lab Komputer 2">Lab Komputer 2</option>
-                                            <option value="Lab Jaringan">Lab Jaringan</option>
-                                            <option value="Lab Multimedia">Lab Multimedia</option>
+                                            <option value="Lab B">Lab B</option>
+                                            <option value="Lab C">Lab C</option>
+                                            <option value="Lab D">Lab D</option>
+                                            <option value="Lab Cisco">Lab Cisco</option>
+                                            <option value="Online">Online</option>
                                         </select>
                                     </div>
                                 </div>

@@ -164,9 +164,6 @@ const Materi = () => {
                     <h3 className="fw-bold">Bank Materi</h3>
                     <p className="text-muted small mb-0">Total {allMaterials.length} file materi</p>
                 </div>
-                <Link to={`/asdos/kelas/${id_praktikum}/materi/input`} className="btn btn-primary shadow-sm">
-                    <i className="bi bi-upload me-2"></i>Upload
-                </Link>
             </div>
 
             {/* Sessions with Materials */}

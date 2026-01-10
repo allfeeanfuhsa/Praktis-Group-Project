@@ -78,11 +78,6 @@ const Tugas = () => {
            <h3 className="fw-bold text-dark">Daftar Tugas</h3>
            <p className="text-muted small">Kelola tugas untuk kelas ini</p>
         </div>
-        {/* Note: In a real app, you might want to select which session to add a task to. 
-            For now, linking to a generic input or a modal is fine. */}
-        <button className="btn btn-primary shadow-sm fw-bold">
-          <i className="bi bi-plus-lg me-2"></i>Buat Tugas
-        </button>
       </div>
 
       {/* LIST TUGAS */}

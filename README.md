@@ -1,142 +1,77 @@
-# Praktis-Group-Project
-Update:
-- All frontend aspects are moved into client/ directory
-- Added backend logic (in server/ directory; Haven't been thoroughly reviewed, though most of them works in Postman)
+## Praktis Group Project — E‑Business & Web Programming
 
-What we do next:
-1. Review backend functionality thoroughly and do some patches whenever a misalignment occurs
-2. Integrate backend with the frontend
-3. Deploy on a web hosting provider
-4. Testing
+Short summary
+---------------
+This repository contains a full-stack student practical management system built for a university practicals course. The frontend is a React + Vite single-page app in the `client/` folder. The backend is an Express-based API in the `server/` folder that uses MongoDB (for document data like materials/submissions) and a relational DB via Sequelize/mysql2 for core relational models.
 
+Key features
+------------
+- Role-based access: Admin, Asdos (assistant), Mahasiswa (student)
+- Authentication with JWT
+- Manage praktikum, sessions, materials, tasks, submissions, and attendance
+- File upload handling for materials and task submissions
 
+Architecture & Tech
+-------------------
+- Frontend: React, Vite, React Router, Axios, Bootstrap
+- Backend: Node.js, Express, Sequelize (MySQL), Mongoose (MongoDB), JWT
+- File storage: `server/uploads/*` (materials, submissions, tasks)
 
+Quick start (development)
+-------------------------
+Prerequisites: Node.js (>=16), npm, MongoDB instance, MySQL (optional depending on features).
 
+1) Start backend
+
+```powershell
+cd server
+npm install
+# create or provide environment config (see server/config/env.js)
+# run dev server (nodemon):
+npm run dev
 ```
-Praktis Project
-├─ client
-│  ├─ eslint.config.js
-│  ├─ index.html
-│  ├─ package-lock.json
-│  ├─ package.json
-│  ├─ public
-│  │  └─ vite.svg
-│  ├─ src
-│  │  ├─ api
-│  │  │  └─ axiosInstance.js
-│  │  ├─ App.css
-│  │  ├─ App.jsx
-│  │  ├─ assets
-│  │  │  ├─ css
-│  │  │  │  ├─ login.css
-│  │  │  │  └─ style.css
-│  │  │  ├─ img
-│  │  │  │  └─ logo_pa.jpeg
-│  │  │  ├─ js
-│  │  │  │  └─ script.js
-│  │  │  └─ react.svg
-│  │  ├─ components
-│  │  │  ├─ footer.jsx
-│  │  │  ├─ header.jsx
-│  │  │  ├─ ProtectedRoute.jsx
-│  │  │  ├─ SidebarAdmin.jsx
-│  │  │  ├─ SidebarAsdos.jsx
-│  │  │  ├─ SidebarMhs.jsx
-│  │  │  └─ SidebarNavLink.jsx
-│  │  ├─ context
-│  │  │  └─ authContext.jsx
-│  │  ├─ hooks
-│  │  │  └─ useForm.js
-│  │  ├─ index.css
-│  │  ├─ layouts
-│  │  │  ├─ LayoutAdmin.jsx
-│  │  │  ├─ LayoutAsdos.jsx
-│  │  │  └─ LayoutMhs.jsx
-│  │  ├─ main.jsx
-│  │  ├─ pages
-│  │  │  ├─ admin
-│  │  │  │  ├─ Dashboard.jsx
-│  │  │  │  ├─ ManajemenAsdos.jsx
-│  │  │  │  ├─ ManajemenPraktikum.jsx
-│  │  │  │  └─ ManajemenUser.jsx
-│  │  │  ├─ asdos
-│  │  │  │  ├─ Dashboard.jsx
-│  │  │  │  ├─ Jadwal.jsx
-│  │  │  │  ├─ JadwalInput.jsx
-│  │  │  │  ├─ Materi.jsx
-│  │  │  │  ├─ MateriInput.jsx
-│  │  │  │  ├─ Penilaian.jsx
-│  │  │  │  ├─ SessionDetail.jsx
-│  │  │  │  ├─ Tugas.jsx
-│  │  │  │  └─ TugasInput.jsx
-│  │  │  ├─ auth
-│  │  │  │  ├─ Login.jsx
-│  │  │  │  └─ RoleSelection.jsx
-│  │  │  └─ mahasiswa
-│  │  │     ├─ Dashboard.jsx
-│  │  │     ├─ Jadwal.jsx
-│  │  │     ├─ Materi.jsx
-│  │  │     ├─ SessionDetail.jsx
-│  │  │     ├─ Tugas.jsx
-│  │  │     └─ TugasUpload.jsx
-│  │  └─ utils
-│  │     ├─ api.js
-│  │     └─ roleHelper.js
-│  └─ vite.config.js
-├─ README.md
-└─ server
-   ├─ config
-   │  ├─ db.mongo.js
-   │  ├─ db.sql.js
-   │  └─ env.js
-   ├─ controllers
-   │  ├─ authController.js
-   │  ├─ contentController.js
-   │  ├─ praktikumController.js
-   │  ├─ submissionController.js
-   │  └─ userController.js
-   ├─ middleware
-   │  ├─ authMiddleware.js
-   │  ├─ enrollmentMiddleware.js
-   │  ├─ errorHandler.js
-   │  ├─ rbacMiddleware.js
-   │  └─ uploadMiddleware.js
-   ├─ models
-   │  ├─ nosql
-   │  │  ├─ Materi.js
-   │  │  ├─ Pengumpulan.js
-   │  │  └─ Tugas.js
-   │  └─ sql
-   │     ├─ index.js
-   │     ├─ Pertemuan.js
-   │     ├─ Praktikum.js
-   │     ├─ PraktikumUserRole.js
-   │     ├─ Presensi.js
-   │     ├─ PresensiStatus.js
-   │     ├─ Role.js
-   │     ├─ User.js
-   │     └─ UserRole.js
-   ├─ package-lock.json
-   ├─ package.json
-   ├─ routes
-   │  ├─ adminRoutes.js
-   │  ├─ authRoutes.js
-   │  ├─ contentRoutes.js
-   │  ├─ submissionRoutes.js
-   │  └─ userRoutes.js
-   ├─ seed.js
-   ├─ server.js
-   ├─ uploads
-   │  ├─ materials
-   │  ├─ submissions
-   │  └─ tasks
-   ├─ services
-   │  ├─ authService.js
-   │  ├─ gradingService.js
-   │  └─ praktikumService.js
-   └─ utils
-      ├─ constants.js
-      ├─ fileHelper.js
-      └─ responseHelper.js
 
+2) Start frontend
+
+```powershell
+cd client
+npm install
+npm run dev
 ```
+
+Important scripts
+-----------------
+- Server (see [server/package.json](server/package.json#L1)):
+   - `npm run dev` — start server with `nodemon` (development)
+   - `npm start` — start server node
+   - `npm run seed` — run seed script
+- Client (see [client/package.json](client/package.json#L1)):
+   - `npm run dev` — run Vite dev server
+   - `npm run build` — build for production
+   - `npm run preview` — preview production build
+
+Configuration
+-------------
+- Backend config files: [server/config/env.js](server/config/env.js), [server/config/db.mongo.js](server/config/db.mongo.js), [server/config/db.sql.js](server/config/db.sql.js).
+- Typical environment variables to provide: MongoDB URI, MySQL credentials, JWT secret, server port, upload folder path.
+
+Key folders & files
+-------------------
+- `client/` — React frontend source
+   - `src/` — app code, components, pages, layouts
+   - `src/api/axiosInstance.js` — configured Axios instance
+- `server/` — backend API
+   - `server/routes/` — route definitions (authRoutes, adminRoutes, contentRoutes, submissionRoutes, userRoutes)
+   - `server/controllers/` — request handlers
+   - `server/middleware/` — auth, RBAC, file uploads, error handling
+   - `server/models/` — SQL & NoSQL model definitions
+
+Authentication & Roles
+----------------------
+Authentication uses JWT tokens. Role checks are enforced via RBAC middleware (`server/middleware/rbacMiddleware.js`) and `authMiddleware.js`. The frontend uses `authContext.jsx` to store token and user info per session.
+
+Notes & next steps
+------------------
+- Review and set environment variables before running the server.
+- Ensure DBs (MongoDB and MySQL) are reachable and migrations/seeds run as needed.
+- Consider securing uploads and using cloud storage for production.
