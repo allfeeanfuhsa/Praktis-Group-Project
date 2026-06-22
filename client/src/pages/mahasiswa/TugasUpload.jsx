@@ -12,6 +12,7 @@ const TugasUpload = () => {
     // Upload State
     const [selectedFile, setSelectedFile] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [commentText, setCommentText] = useState("");
 
     // 1. Fetch Data
     const fetchData = async () => {
@@ -110,13 +111,26 @@ const TugasUpload = () => {
             alert("Gagal mengakses file.");
         }
     };
+    const handleSendComment = async () => {
+  if (!commentText.trim() || !submission) return;
 
+  try {
+    await api.post(`/api/submission/${submission._id}/comment`, {
+      text: commentText
+    });
+
+    setCommentText("");
+    fetchData();
+  } catch (err) {
+    console.error("Error comment:", err);
+    alert("Gagal mengirim komentar.");
+  }
+};
     const formatDate = (date) => {
         return new Date(date).toLocaleDateString('id-ID', {
             day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
         });
     };
-
     if (loading) return <div className="text-center py-5">Loading...</div>;
     if (!task) return <div className="alert alert-danger">Tugas tidak ditemukan.</div>;
 
@@ -236,6 +250,51 @@ const TugasUpload = () => {
                                             <div>Menunggu penilaian dari Asisten Dosen.</div>
                                         </div>
                                     )}
+                                <div className="text-start border-top pt-3 mt-3">
+                                <h6 className="fw-bold small text-muted text-uppercase">
+                                    Diskusi / Komentar
+                                </h6>
+
+                                <div className="bg-light rounded-3 border p-3 mb-3" style={{ maxHeight: "220px", overflowY: "auto" }}>
+                                    {submission.comments && submission.comments.length > 0 ? (
+                                    submission.comments.map((comment, idx) => (
+                                        <div key={idx} className="mb-3">
+                                        <div className="small fw-bold text-muted">
+                                            {comment.senderName || "User"}
+                                        </div>
+                                        <div className="bg-white border rounded-3 p-2 small">
+                                            {comment.text}
+                                        </div>
+                                        <div className="text-muted mt-1" style={{ fontSize: "0.65rem" }}>
+                                            {comment.createdAt ? new Date(comment.createdAt).toLocaleString("id-ID") : ""}
+                                        </div>
+                                        </div>
+                                    ))
+                                    ) : (
+                                    <div className="text-muted small text-center py-3">
+                                        Belum ada komentar.
+                                    </div>
+                                    )}
+                                </div>
+
+                                <div className="d-flex gap-2">
+                                    <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Tulis komentar..."
+                                    value={commentText}
+                                    onChange={(e) => setCommentText(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
+                                    />
+                                    <button
+                                    className="btn btn-primary"
+                                    onClick={handleSendComment}
+                                    disabled={!commentText.trim()}
+                                    >
+                                    <i className="bi bi-send-fill"></i>
+                                    </button>
+                                </div>
+                                </div>
                                 </div>
                             ) : (
                                 /* Upload Form */
