@@ -32,7 +32,10 @@ const createUploader = (subfolder) => {
       'application/vnd.ms-powerpoint', // .ppt
       'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
       'image/jpeg', 
-      'image/png'
+      'image/png',
+      'application/zip', // .zip
+      'application/x-zip-compressed', // Windows .zip
+      'application/x-rar-compressed' // .rar
     ];
 
     if (allowedTypes.includes(file.mimetype)) {
