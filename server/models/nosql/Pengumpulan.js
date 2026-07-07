@@ -33,7 +33,12 @@ const PengumpulanSchema = new mongoose.Schema({
     max: 100
   },
   
-  feedback: String,
+  comments: [{
+    senderId: { type: Number, required: true },
+    senderName: { type: String, required: true },
+    text: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
   
   submitted_at: { type: Date, default: Date.now },
   graded_by: Number,
