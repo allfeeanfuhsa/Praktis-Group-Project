@@ -41,29 +41,29 @@ exports.submitWork = async (req, res) => {
 
     // D. The "Smart Save" (Update if exists, Create if new)
     const fileData = {
-        filename: file.filename,
-        path: file.path,
-        mimetype: file.mimetype,
-        size: file.size
+      filename: file.filename,
+      path: file.path,
+      mimetype: file.mimetype,
+      size: file.size
     };
 
     const submission = await Pengumpulan.findOneAndUpdate(
-        { tugas_id: tugas_id, student_id: studentId }, // Find by composite key
-        {
-            $set: {
-                file: fileData,
-                status: status,
-                submitted_at: now,
-                // We do NOT reset 'nilai' or 'feedback' here to preserve history if needed,
-                // or you can clear them if you want a fresh start.
-            }
-        },
-        { new: true, upsert: true, setDefaultsOnInsert: true }
+      { tugas_id: tugas_id, student_id: studentId }, // Find by composite key
+      {
+        $set: {
+          file: fileData,
+          status: status,
+          submitted_at: now,
+          // We do NOT reset 'nilai' or 'feedback' here to preserve history if needed,
+          // or you can clear them if you want a fresh start.
+        }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
     );
 
-    res.status(200).json({ 
-        message: status === 'terlambat' ? 'Tugas dikumpulkan terlambat.' : 'Tugas berhasil dikumpulkan.', 
-        data: submission 
+    res.status(200).json({
+      message: status === 'terlambat' ? 'Tugas dikumpulkan terlambat.' : 'Tugas berhasil dikumpulkan.',
+      data: submission
     });
 
   } catch (error) {
@@ -110,19 +110,19 @@ exports.gradeWork = async (req, res) => {
 
     // 5. Verify authorization: User must be asdos of this class OR admin
     const isAdmin = req.user.roles.includes('admin');
-    
+
     if (!isAdmin) {
       const enrollment = await PraktikumUserRole.findOne({
-        where: { 
-          id_user: asdosId, 
-          id_praktikum: session.id_praktikum 
+        where: {
+          id_user: asdosId,
+          id_praktikum: session.id_praktikum
         },
         include: [{ model: Role }]
       });
 
       if (!enrollment || enrollment.Role.deskripsi !== 'asdos') {
-        return res.status(403).json({ 
-          message: 'You are not authorized to grade this submission. Only the instructor of this class can grade.' 
+        return res.status(403).json({
+          message: 'You are not authorized to grade this submission. Only the instructor of this class can grade.'
         });
       }
     }
@@ -133,12 +133,12 @@ exports.gradeWork = async (req, res) => {
     submission.status = 'dinilai';
     submission.graded_by = asdosId;
     submission.graded_at = new Date();
-    
+
     await submission.save();
 
-    res.json({ 
-      message: 'Grading saved successfully', 
-      data: submission 
+    res.json({
+      message: 'Grading saved successfully',
+      data: submission
     });
 
   } catch (error) {
@@ -159,7 +159,7 @@ exports.downloadFile = async (req, res, next) => {
 
     // 1. Find the Submission (Pengumpulan), NOT Materi
     const submission = await Pengumpulan.findById(submissionId);
-    
+
     if (!submission || !submission.file) {
       return res.status(404).json({ message: 'File not found' });
     }
@@ -169,7 +169,7 @@ exports.downloadFile = async (req, res, next) => {
     // =========================================================
     // FIX FOR PATH RESOLUTION
     // =========================================================
-    
+
     // A. Normalize path separators (Fixes Windows backslashes from DB)
     const normalizedDbPath = file.path.replace(/\\/g, '/');
 
@@ -177,8 +177,8 @@ exports.downloadFile = async (req, res, next) => {
     // __dirname = .../server/controllers
     // '..'      = .../server
     // normalizedDbPath = uploads/submissions/filename.pdf
-    const filePath = path.join(__dirname, '..', normalizedDbPath); 
-    
+    const filePath = path.join(__dirname, '..', normalizedDbPath);
+
     // =========================================================
 
     // Debugging
@@ -196,7 +196,7 @@ exports.downloadFile = async (req, res, next) => {
     // Stream
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
-    
+
     stream.on('error', (err) => {
       console.error('Stream error:', err);
       res.status(500).json({ message: 'Error downloading file' });
@@ -250,9 +250,9 @@ exports.getMySubmission = async (req, res, next) => {
     const userId = req.user.id; // From authMiddleware
 
     // Find submission matching Task ID + Student ID
-    const submission = await Pengumpulan.findOne({ 
-        tugas_id: taskId, 
-        student_id: userId 
+    const submission = await Pengumpulan.findOne({
+      tugas_id: taskId,
+      student_id: userId
     });
 
     if (!submission) {
@@ -272,26 +272,59 @@ exports.getMySubmissionsForTasks = async (req, res, next) => {
     const studentId = req.user.id;
 
     if (!taskIds || !Array.isArray(taskIds)) {
-        return res.status(400).json({ message: "Invalid taskIds" });
+      return res.status(400).json({ message: "Invalid taskIds" });
     }
 
     // Find all submissions by this student for these tasks
     const submissions = await Pengumpulan.find({
-        student_id: studentId,
-        tugas_id: { $in: taskIds }
+      student_id: studentId,
+      tugas_id: { $in: taskIds }
     });
 
     // Create a map for easy lookup: { "taskId": { status: "...", nilai: 80 } }
     const statusMap = {};
     submissions.forEach(sub => {
-        statusMap[sub.tugas_id] = {
-            status: sub.status,
-            nilai: sub.nilai,
-            submitted_at: sub.submitted_at
-        };
+      statusMap[sub.tugas_id] = {
+        status: sub.status,
+        nilai: sub.nilai,
+        submitted_at: sub.submitted_at
+      };
     });
 
     res.json(statusMap);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// NEW: Add a comment to a submission
+exports.addComment = async (req, res, next) => {
+  try {
+    const { submissionId } = req.params;
+    const { text } = req.body;
+
+    // req.user comes from your authMiddleware (only contains id and roles)
+    const userId = req.user.id;
+
+    // Fetch the user from the SQL database to get their real name
+    const { User } = require('../models/sql');
+    const userRecord = await User.findByPk(userId);
+    const userName = userRecord ? userRecord.nama : 'User';
+
+    if (!text) return res.status(400).json({ message: "Comment text is required" });
+
+    const submission = await Pengumpulan.findById(submissionId);
+    if (!submission) return res.status(404).json({ message: 'Submission not found' });
+
+    // Push the new comment into the array
+    submission.comments.push({
+      senderId: userId,
+      senderName: userName,
+      text: text
+    });
+
+    await submission.save();
+    res.json({ message: "Comment added", data: submission });
   } catch (error) {
     next(error);
   }
