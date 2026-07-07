@@ -13,6 +13,9 @@ const PenilaianAsdos = () => {
 
   // Temporary state for grade inputs (so we can type before saving)
   const [inputGrades, setInputGrades] = useState({});
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [showOffcanvas, setShowOffcanvas] = useState(false);
+  const [commentText, setCommentText] = useState("");
 
   // 1. Fetch Submissions
   useEffect(() => {
@@ -102,7 +105,37 @@ const PenilaianAsdos = () => {
       alert("Gagal mengunduh file.");
     }
   };
+const openComments = (sub) => {
+  setSelectedSubmission(sub);
+  setShowOffcanvas(true);
+};
 
+const handleSendCommentAsdos = async () => {
+  if (!commentText.trim() || !selectedSubmission) return;
+
+  try {
+    const res = await api.post(
+      `/api/submission/${selectedSubmission._id}/comment`,
+      {
+        text: commentText
+      }
+    );
+
+    setCommentText("");
+
+    setSubmissions(prev =>
+      prev.map(sub =>
+        sub._id === selectedSubmission._id ? res.data.data : sub
+      )
+    );
+
+    setSelectedSubmission(res.data.data);
+
+  } catch (err) {
+    console.error("Error comment:", err);
+    alert("Gagal mengirim komentar.");
+  }
+};
   // Helper: Format Date
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('id-ID', {
@@ -179,13 +212,23 @@ const PenilaianAsdos = () => {
                         />
                       </td>
                       <td>
+                      <div className="d-flex gap-2">
                         <button
                           className="btn btn-primary btn-sm"
                           onClick={() => handleSaveGrade(sub._id)}
                         >
                           <i className="bi bi-save"></i>
                         </button>
-                      </td>
+
+                        <button
+                          className="btn btn-sm btn-outline-info"
+                          onClick={() => openComments(sub)}
+                          title="Buka Komentar"
+                        >
+                          <i className="bi bi-chat-dots-fill"></i>
+                        </button>
+                      </div>
+                    </td>
                     </tr>
                   ))
                 )}
@@ -194,6 +237,77 @@ const PenilaianAsdos = () => {
           </div>
         </div>
       </div>
+      {showOffcanvas && (
+  <>
+    <div
+      className="offcanvas offcanvas-end show"
+      tabIndex="-1"
+      style={{ visibility: "visible", zIndex: 1050 }}
+    >
+      <div className="offcanvas-header border-bottom bg-light">
+        <h5 className="offcanvas-title fw-bold">
+          <i className="bi bi-chat-dots-fill text-primary me-2"></i>
+          Diskusi Mahasiswa
+        </h5>
+        <button
+          type="button"
+          className="btn-close"
+          onClick={() => setShowOffcanvas(false)}
+        ></button>
+      </div>
+
+      <div className="offcanvas-body d-flex flex-column" style={{ backgroundColor: "#f8f9fa" }}>
+        <div className="flex-grow-1 overflow-auto mb-3 p-3 bg-white rounded-3 border shadow-sm">
+          {selectedSubmission?.comments?.length > 0 ? (
+            selectedSubmission.comments.map((comment, idx) => (
+              <div key={idx} className="mb-3">
+                <div className="small fw-bold text-muted mb-1">
+                  {comment.senderName || "User"}
+                </div>
+                <div className="p-2 rounded-3 shadow-sm bg-light border">
+                  {comment.text}
+                </div>
+                <div className="small text-muted mt-1" style={{ fontSize: "0.65rem" }}>
+                  {comment.createdAt ? new Date(comment.createdAt).toLocaleString("id-ID") : ""}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-muted small text-center my-5">
+              <i className="bi bi-chat-square-text fs-1 d-block mb-2 text-light"></i>
+              Belum ada komentar.
+            </div>
+          )}
+        </div>
+
+        <div className="d-flex gap-2 mt-auto p-2 bg-white rounded-3 border shadow-sm">
+          <input
+            type="text"
+            className="form-control border-0 bg-light"
+            placeholder="Balas pesan..."
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSendCommentAsdos()}
+          />
+          <button
+            className="btn btn-primary rounded-circle"
+            style={{ width: "40px", height: "40px", padding: 0 }}
+            onClick={handleSendCommentAsdos}
+            disabled={!commentText.trim()}
+          >
+            <i className="bi bi-send-fill"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      className="offcanvas-backdrop fade show"
+      style={{ zIndex: 1040 }}
+      onClick={() => setShowOffcanvas(false)}
+    ></div>
+  </>
+)}
     </div>
   );
 };

@@ -2,13 +2,14 @@
 const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
+const checkRole = require('../middleware/rbacMiddleware');
 
 // === FIX IS HERE ===
 // Remove the { } brackets. Import it directly.
-const verifyToken = require('../middleware/authMiddleware'); 
+const verifyToken = require('../middleware/authMiddleware');
 
 // Debugging: This should print "[Function: verifyToken]"
-console.log('VerifyToken Check:', verifyToken); 
+console.log('VerifyToken Check:', verifyToken);
 
 // Apply Auth Middleware
 router.use(verifyToken);
@@ -23,25 +24,25 @@ router.get('/mahasiswa-dashboard', userController.getMahasiswaDashboard);
 
 // === ADMIN ROUTES ===
 // Get User Details
-router.get('/admin/users/:id', 
-  verifyToken, 
-  // checkRole(['admin']), // Ensure only admin can access
+router.get('/admin/users/:id',
+  verifyToken,
+  checkRole(['admin']), // Ensure only admin can access
   userController.getUserById
 );
 
 router.put('/admin/users/:id', verifyToken, userController.updateUserByAdmin);
 
 // Assign Class
-router.post('/admin/enroll', 
-  verifyToken, 
-  // checkRole(['admin']), 
+router.post('/admin/enroll',
+  verifyToken,
+  checkRole(['admin']),
   userController.assignUserToClass
 );
 
 // Remove Class
-router.post('/admin/unenroll', 
-  verifyToken, 
-  // checkRole(['admin']), 
+router.post('/admin/unenroll',
+  verifyToken,
+  checkRole(['admin']),
   userController.removeUserFromClass
 );
 
