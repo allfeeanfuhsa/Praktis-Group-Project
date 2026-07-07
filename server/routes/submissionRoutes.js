@@ -24,7 +24,7 @@ router.use(verifyToken);
  * @access  Authenticated Users (Logic inside controller checks deadline)
  * @body    form-data: { tugas_id: "...", file: [PDF/Doc] }
  */
-router.post('/', 
+router.post('/',
   uploadSubmission.single('file'), // Handle File Upload first
   submissionController.submitWork
 );
@@ -34,8 +34,8 @@ router.post('/',
  * @desc    Asdos grades a submission
  * @access  Asdos or Admin
  */
-router.put('/:submissionId/grade', 
-  checkRole(['asdos', 'admin']), 
+router.put('/:submissionId/grade',
+  checkRole(['asdos', 'admin']),
   submissionController.gradeWork
 );
 
@@ -44,13 +44,13 @@ router.put('/:submissionId/grade',
  * @desc    Download the submitted file
  * @access  Authenticated Users (Controller checks ownership)
  */
-router.get('/:submissionId/download', 
+router.get('/:submissionId/download',
   submissionController.downloadFile
 );
 
 // NEW: Get all submissions for a specific task
-router.get('/task/:taskId', 
-  checkRole(['asdos', 'admin']), 
+router.get('/task/:taskId',
+  checkRole(['asdos', 'admin']),
   submissionController.getSubmissionsByTask
 );
 
@@ -59,5 +59,7 @@ router.get('/me/:taskId', submissionController.getMySubmission);
 router.post('/me/bulk-check', submissionController.getMySubmissionsForTasks);
 
 router.get('/download/:submissionId', submissionController.downloadFile);
+
+router.post('/:submissionId/comment', submissionController.addComment);
 
 module.exports = router;
