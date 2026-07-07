@@ -17,7 +17,8 @@ const TugasSchema = new mongoose.Schema({
   attachments: [{
     filename: String,
     path: String,
-    mimetype: String
+    mimetype: String,
+    size: Number
   }],
 
   created_by: { type: Number, required: true }, // Store the Asdos User ID

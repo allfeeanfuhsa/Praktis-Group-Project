@@ -1,9 +1,21 @@
+require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { sequelize, User, Role, UserRole, PresensiStatus, Praktikum, PraktikumUserRole, Pertemuan } = require('./models/sql');
+const connectMongo = require('./config/db.mongo');
+const Materi = require('./models/nosql/Materi');
+const Tugas = require('./models/nosql/Tugas');
+const Pengumpulan = require('./models/nosql/Pengumpulan');
 
 async function seed() {
   try {
-    console.log('⏳ Starting database sync...');
+    console.log('⏳ Connecting to MongoDB and cleaning collections...');
+    await connectMongo();
+    await Materi.deleteMany({});
+    await Tugas.deleteMany({});
+    await Pengumpulan.deleteMany({});
+    console.log('✅ MongoDB collections cleaned.');
+
+    console.log('⏳ Starting SQL database sync...');
     // Sync all tables (force: true drops existing tables and recreates them cleanly)
     await sequelize.sync({ force: true });
     console.log('✅ Tables synced successfully.');
@@ -99,6 +111,5 @@ async function seed() {
   }
 }
 
-// Require dotenv to load variables
-require('dotenv').config();
+// Start seeding
 seed();

@@ -59,7 +59,7 @@ const startServer = async () => {
     const { sequelize: sqlDB } = require('./models/sql/index');
 
     // await sqlDB.sync({ alter: true });
-    await sqlDB.authenticate(); 
+    await sqlDB.authenticate();
     console.log('✅ SQL Database Connected (Schema validation skipped)');
 
     // 3. Start Listening

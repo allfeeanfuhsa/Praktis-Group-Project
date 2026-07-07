@@ -9,12 +9,12 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // 1. Find User & Global Roles
-    const user = await User.findOne({ 
-        where: { email },
-        include: [{
-            model: Role,
-            through: { attributes: [] }
-        }]
+    const user = await User.findOne({
+      where: { email },
+      include: [{
+        model: Role,
+        through: { attributes: [] }
+      }]
     });
 
     if (!user) return res.status(404).json({ message: 'User not found' });
@@ -23,7 +23,7 @@ exports.login = async (req, res) => {
     if (!validPass) return res.status(400).json({ message: 'Invalid password' });
 
     // 2. Get Global Roles (e.g., ['mahasiswa'])
-    let roles = user.Roles.map(r => r.deskripsi); 
+    let roles = user.Roles.map(r => r.deskripsi);
 
     // 3. CHECK FOR CONTEXT ROLES (The Fix!)
     // Check if this user is an Asdos in ANY active Praktikum
@@ -39,8 +39,8 @@ exports.login = async (req, res) => {
 
     // 4. Generate Token with the combined roles
     const token = jwt.sign(
-      { id: user.id_user, roles: roles }, 
-      env.jwtSecret, 
+      { id: user.id_user, roles: roles },
+      env.jwtSecret,
       { expiresIn: '24h' }
     );
 
@@ -62,5 +62,5 @@ exports.login = async (req, res) => {
 };
 
 exports.me = (req, res) => {
-    res.json(req.user);
+  res.json(req.user);
 };
