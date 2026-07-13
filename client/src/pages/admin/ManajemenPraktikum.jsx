@@ -5,6 +5,7 @@ import { useForm } from '../../hooks/useForm';
 const ManajemenPraktikum = () => {
   const [labs, setLabs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
   
   const { formData, handleChange, reset } = useForm({
     mata_kuliah: '',
@@ -33,13 +34,39 @@ const ManajemenPraktikum = () => {
     }
   };
 
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [selectedLab, setSelectedLab] = useState(null);
+
+  // Dummy session (sementara sebelum backend jadi)
+  const dummySessions = Array.from({ length: 10 }, (_, i) => ({
+  id: i + 1,
+  sesi: i + 1,
+  tanggal: "-",
+  waktu: "08:00 - 10:00",
+  status: "Aktif"
+}));
+
+  const handleOpenSession = (lab) => {
+  setSelectedLab(lab);
+  setShowSessionModal(true);
+};
+
+  const handleCloseSession = () => {
+  setSelectedLab(null);
+  setShowSessionModal(false);
+};
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/admin/praktikum', formData);
-      
-      alert('Praktikum berhasil dibuat! 10 Sesi Mingguan telah digenerate.');
+   if (editingId) {
+    await api.put(`/api/admin/praktikum/${editingId}`, formData);
+    alert('Praktikum berhasil diupdate.');
+  } else {
+  await api.post('/api/admin/praktikum', formData);
+  alert('Praktikum berhasil dibuat! 10 sesi telah digenerate.');
+  }
       fetchLabs();
+      setEditingId(null);
       reset();
     } catch (err) {
       alert(err.response?.data?.message || 'Gagal membuat praktikum');
@@ -57,6 +84,44 @@ const ManajemenPraktikum = () => {
     }
   };
 
+  const handleEdit = (lab) => {
+  setEditingId(lab.id_praktikum);
+
+  handleChange({
+    target: {
+      name: 'mata_kuliah',
+      value: lab.mata_kuliah,
+    },
+  });
+
+  handleChange({
+    target: {
+      name: 'kode_kelas',
+      value: lab.kode_kelas,
+    },
+  });
+
+  handleChange({
+    target: {
+      name: 'tahun_pelajaran',
+      value: lab.tahun_pelajaran,
+    },
+  });
+
+  handleChange({
+    target: {
+      name: 'semester',
+      value: lab.semester || 1,
+    },
+  });
+
+  handleChange({
+    target: {
+      name: 'ruangan',
+      value: lab.ruangan,
+    },
+  });
+};
   return (
     <div className="container-fluid p-4">
       <h3 className="fw-bold mb-4">Manajemen Praktikum</h3>
@@ -64,7 +129,7 @@ const ManajemenPraktikum = () => {
       {/* 1. INPUT FORM */}
       <div className="card shadow-sm border-0 mb-4">
         <div className="card-header bg-white py-3">
-            <h5 className="card-title mb-0 fw-bold text-primary">Buat Kelas Baru</h5>
+           <h5 className="fw-bold">{editingId ? "Edit Kelas" : "Buat Kelas Baru"}</h5>
         </div>
         <div className="card-body">
           <form onSubmit={handleSubmit}>
@@ -130,8 +195,8 @@ const ManajemenPraktikum = () => {
                     </div>
 
                     <div className="col-md-2">
-                        <button type="submit" className="btn btn-primary w-100 fw-bold">
-                            <i className="bi bi-magic me-2"></i>Generate
+                        <button type="submit" className="btn btn-primary">
+                        {editingId ? "Update Kelas" : "Generate"}
                         </button>
                     </div>
                 </div>
@@ -171,11 +236,36 @@ const ManajemenPraktikum = () => {
                         {/* ✅ Backend generates a string like "Senin, 08:00 - 10:00" in 'jadwal' */}
                         <td>{lab.jadwal || '-'}</td>
                         <td>{lab.ruangan}</td>
-                        <td>
-                        <button onClick={() => handleDelete(lab.id_praktikum)} className="btn btn-outline-danger btn-sm" title="Hapus Kelas">
-                            <i className="bi bi-trash"></i>
-                        </button>
-                        </td>
+                       <td className="text-center">
+
+  {/* Kelola Session */}
+  <button
+    className="btn btn-outline-info btn-sm me-2"
+    title="Kelola Session"
+    onClick={() => handleOpenSession(lab)}
+  >
+    <i className="bi bi-calendar-week"></i>
+  </button>
+
+  {/* Edit Kelas */}
+  <button
+    className="btn btn-outline-primary btn-sm me-2"
+    title="Edit Kelas"
+    onClick={() => handleEdit(lab)}
+  >
+    <i className="bi bi-gear"></i>
+  </button>
+
+  {/* Hapus */}
+  <button
+    className="btn btn-outline-danger btn-sm"
+    title="Hapus Kelas"
+    onClick={() => handleDelete(lab.id_praktikum)}
+  >
+    <i className="bi bi-trash"></i>
+  </button>
+
+</td>
                     </tr>
                     ))
                 )}
@@ -184,6 +274,113 @@ const ManajemenPraktikum = () => {
           </div>
         </div>
       </div>
+      {showSessionModal && (
+<div
+    className="modal fade show"
+    style={{ display: "block", background: "rgba(0,0,0,.5)" }}
+>
+    <div className="modal-dialog modal-lg modal-dialog-scrollable">
+        <div className="modal-content">
+
+            <div className="modal-header">
+                <h5 className="modal-title fw-bold">
+                    <i className="bi bi-calendar-week me-2"></i>
+                    Dynamic Session Management
+                </h5>
+
+                <button
+                    className="btn-close"
+                    onClick={handleCloseSession}
+                />
+            </div>
+
+            <div className="modal-body">
+
+                <div className="mb-4">
+
+                    <h4 className="fw-bold mb-1">
+                        {selectedLab?.mata_kuliah}
+                    </h4>
+
+                    <div className="text-muted">
+                        Kelas {selectedLab?.kode_kelas}
+                    </div>
+
+                </div>
+
+                <div className="list-group">
+
+                    {dummySessions.map((session) => (
+
+                        <div
+                            key={session.id}
+                            className="list-group-item mb-2 rounded shadow-sm"
+                        >
+
+                            <div className="d-flex justify-content-between align-items-center">
+
+                                <div>
+
+                                    <h6 className="fw-bold">
+                                        Sesi {session.sesi}
+                                    </h6>
+
+                                    <small className="text-muted">
+
+                                        {session.tanggal}
+
+                                        <br />
+
+                                        {session.waktu}
+
+                                    </small>
+
+                                </div>
+
+                                <div>
+
+                                    <span className="badge bg-success me-3">
+
+                                        {session.status}
+
+                                    </span>
+
+                                    <button
+                                        className="btn btn-outline-primary btn-sm"
+                                    >
+                                        <i className="bi bi-pencil-square me-1"></i>
+
+                                        Edit
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    ))}
+
+                </div>
+
+            </div>
+
+            <div className="modal-footer">
+
+                <button
+                    className="btn btn-secondary"
+                    onClick={handleCloseSession}
+                >
+                    Tutup
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+)}
     </div>
   );
 };
