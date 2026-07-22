@@ -58,7 +58,7 @@ exports.submitWork = async (req, res) => {
           // or you can clear them if you want a fresh start.
         }
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
     );
 
     res.status(200).json({

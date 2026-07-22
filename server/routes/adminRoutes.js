@@ -516,7 +516,7 @@ router.post('/ban-ip', verifyToken, checkRole(['admin']), async (req, res) => {
         expires_at: expiresAt,
         is_permanent: !!is_permanent
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     res.json({ message: `Alamat IP ${ip_address} berhasil diblokir.`, bannedRecord });

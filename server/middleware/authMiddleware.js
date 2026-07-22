@@ -35,7 +35,7 @@ const verifyToken = (req, res, next) => {
         user_agent: userAgent,
         last_active: new Date()
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     ).catch(err => console.error('Session log error:', err));
 
     next();
