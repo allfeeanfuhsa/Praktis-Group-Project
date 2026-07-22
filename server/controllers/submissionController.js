@@ -173,27 +173,38 @@ exports.downloadFile = async (req, res, next) => {
     // A. Normalize path separators (Fixes Windows backslashes from DB)
     const normalizedDbPath = file.path.replace(/\\/g, '/');
 
-    // B. Resolve Path Relative to THIS controller file
-    // __dirname = .../server/controllers
-    // '..'      = .../server
-    // normalizedDbPath = uploads/submissions/filename.pdf
-    const filePath = path.join(__dirname, '..', normalizedDbPath);
+    // B. Resolve absolute path
+    const filePath = path.resolve(path.join(__dirname, '..', normalizedDbPath));
 
-    // =========================================================
-
-    // Debugging
-    console.log("Looking for submission at:", filePath);
+    // Security fix (SV-9): Path traversal guard.
+    // Ensure the resolved path is within the expected uploads directory.
+    const uploadsRoot = path.resolve(path.join(__dirname, '..', 'uploads'));
+    if (!filePath.startsWith(uploadsRoot + path.sep) && filePath !== uploadsRoot) {
+      return res.status(403).json({ message: 'Access denied: invalid file path' });
+    }
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
 
-    // Set Headers
+    // Send File Inline or Attachment
+    if (req.query.view === 'true') {
+      const mimeType = (file.mimetype && file.mimetype !== 'application/octet-stream') 
+        ? file.mimetype 
+        : undefined;
+
+      return res.sendFile(filePath, {
+        headers: {
+          ...(mimeType ? { 'Content-Type': mimeType } : {}),
+          'Content-Disposition': 'inline'
+        }
+      });
+    }
+
     res.setHeader('Content-Type', file.mimetype);
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
     res.setHeader('Content-Length', file.size);
 
-    // Stream
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { motion } from 'framer-motion';
 
 const JadwalMhs = () => {
   const { id_praktikum } = useParams();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,59 +27,90 @@ const JadwalMhs = () => {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('id-ID', {
-      weekday: 'long', day: 'numeric', month: 'short', year: 'numeric'
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
     });
   };
 
-  if (loading) return <div className="text-center py-5">Loading jadwal...</div>;
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-5 text-light">
+        <div className="spinner-border text-light" role="status">
+          <span className="visually-hidden">Loading jadwal...</span>
+        </div>
+        <p className="opacity-75 mt-3 small">Memuat jadwal praktikum...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container-fluid px-0">
-      <div className="mb-4">
-        <h3 className="fw-bold text-dark">Jadwal Praktikum</h3>
-        <p className="text-muted small">Informasi waktu dan ruangan untuk setiap sesi.</p>
-      </div>
+      {/* HEADER */}
+      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
+        <button onClick={() => navigate('/mahasiswa/dashboard')} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
+          <i className="bi bi-arrow-left me-2"></i>Kembali ke Dashboard
+        </button>
+        <h3 className="fw-bold text-white mb-1">Jadwal Sesi Pertemuan</h3>
+        <p className="text-light opacity-75 small mb-0">Informasi waktu, lokasi ruangan, dan akses materi untuk setiap sesi.</p>
+      </motion.div>
 
-      <div className="row">
-        {sessions.length === 0 ? (
-          <div className="col-12 text-muted text-center py-5 bg-light rounded">
-            Belum ada jadwal yang dirilis.
-          </div>
-        ) : (
-          sessions.map((session) => (
-            <div key={session.id_pertemuan} className="col-12 mb-3">
-              <div className="card shadow-sm border-0 rounded-3 hover-effect">
-                <div className="card-body p-4 d-flex flex-column flex-md-row align-items-center justify-content-between gap-4">
-                  
-                  {/* Session Info */}
-                  <div className="d-flex align-items-center gap-4">
-                    <div className="text-center bg-light rounded p-3 border" style={{minWidth: '80px'}}>
-                      <span className="d-block small text-muted text-uppercase fw-bold">Sesi</span>
-                      <span className="h3 fw-bold text-primary mb-0">{session.sesi_ke}</span>
-                    </div>
-                    <div>
-                      <h5 className="fw-bold mb-1">{formatDate(session.tanggal)}</h5>
-                      <div className="d-flex flex-wrap gap-3 text-muted small">
-                         <span><i className="bi bi-clock me-1"></i> {session.waktu_mulai} - {session.waktu_selesai}</span>
-                         <span><i className="bi bi-geo-alt me-1"></i> {session.ruangan}</span>
-                      </div>
-                    </div>
+      {/* SESSION CARDS GRID */}
+      {sessions.length === 0 ? (
+        <div className="glass-card static rounded-4 p-5 text-center text-white">
+          <i className="bi bi-calendar-x fs-1 d-block mb-3 opacity-50 text-warning"></i>
+          <h5 className="fw-bold mb-2">Belum Ada Sesi</h5>
+          <p className="text-light opacity-75 mb-0">Belum ada sesi praktikum yang dirilis untuk kelas ini.</p>
+        </div>
+      ) : (
+        <motion.div variants={containerVariants} initial="hidden" animate="visible" className="row g-4">
+          {sessions.map((session) => (
+            <motion.div variants={itemVariants} key={session.id_pertemuan} className="col-12">
+              <div className="glass-card rounded-4 p-4 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-4">
+                
+                {/* Session Info */}
+                <div className="d-flex align-items-center gap-4">
+                  <div className="glass-card static rounded-4 p-3 text-center border-light border-opacity-25" style={{ minWidth: '90px' }}>
+                    <span className="d-block small text-light opacity-75 text-uppercase tracking-wider fw-bold">Sesi</span>
+                    <span className="h2 fw-bold text-white mb-0">{session.sesi_ke}</span>
                   </div>
 
-                  {/* Action */}
+                  <div>
+                    <h5 className="fw-bold text-white mb-2">{formatDate(session.tanggal)}</h5>
+                    <div className="d-flex flex-wrap gap-3 text-light opacity-75 small">
+                       <span><i className="bi bi-clock me-1 text-info"></i> {session.waktu_mulai} - {session.waktu_selesai}</span>
+                       <span><i className="bi bi-geo-alt me-1 text-warning"></i> {session.ruangan}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Link */}
+                <div>
                   <Link 
                     to={`/mahasiswa/kelas/${id_praktikum}/session/${session.id_pertemuan}`} 
-                    className="btn btn-outline-primary fw-bold"
+                    className="btn btn-light shadow-sm rounded-pill px-4 py-2.5 fw-bold d-inline-flex align-items-center gap-2"
                   >
-                    Lihat Detail <i className="bi bi-arrow-right ms-2"></i>
+                    <span>Lihat Detail Sesi</span>
+                    <i className="bi bi-arrow-right"></i>
                   </Link>
-
                 </div>
+
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
     </div>
   );
 };

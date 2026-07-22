@@ -138,15 +138,6 @@ const SidebarMhs = () => {
 
             </div>
 
-            {/* LOGOUT */}
-            <div className="mt-auto p-3 border-top">
-                <button
-                    onClick={handleLogout}
-                    className="btn btn-outline-danger w-100 fw-bold btn-sm"
-                >
-                    <i className="bi bi-box-arrow-left me-2"></i>Logout
-                </button>
-            </div>
         </div>
     );
 };

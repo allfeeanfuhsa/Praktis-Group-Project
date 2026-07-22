@@ -1,13 +1,31 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
 const { sequelize, User, Role, UserRole, PresensiStatus, Praktikum, PraktikumUserRole, Pertemuan } = require('./models/sql');
 const connectMongo = require('./config/db.mongo');
 const Materi = require('./models/nosql/Materi');
 const Tugas = require('./models/nosql/Tugas');
 const Pengumpulan = require('./models/nosql/Pengumpulan');
 
+// Wiping uploads directory safely
+const clearUploads = () => {
+  const uploadDirs = ['materi', 'tugas', 'pengumpulan'];
+  uploadDirs.forEach(dir => {
+    const dirPath = path.join(__dirname, 'uploads', dir);
+    if (fs.existsSync(dirPath)) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+    }
+    fs.mkdirSync(dirPath, { recursive: true });
+  });
+  console.log('✅ Uploads directories wiped and recreated.');
+};
+
 async function seed() {
   try {
+    console.log('⏳ Cleaning uploads folder...');
+    clearUploads();
+
     console.log('⏳ Connecting to MongoDB and cleaning collections...');
     await connectMongo();
     await Materi.deleteMany({});
@@ -16,7 +34,6 @@ async function seed() {
     console.log('✅ MongoDB collections cleaned.');
 
     console.log('⏳ Starting SQL database sync...');
-    // Sync all tables (force: true drops existing tables and recreates them cleanly)
     await sequelize.sync({ force: true });
     console.log('✅ Tables synced successfully.');
 
@@ -34,37 +51,54 @@ async function seed() {
     }
     console.log('✅ Attendance Statuses seeded.');
 
-    console.log('⏳ Seeding Users (Admin, Asdos, Mahasiswa)...');
-    const defaultPassword = process.env.ADMIN_PASSWORD || 'ChangeMe@123456';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    console.log('⏳ Seeding Users (Admin, Mahasiswa)...');
+    
+    // 1 Admin
+    const adminPass = await bcrypt.hash('admin123', 10);
+    const adminRole = await Role.findOne({ where: { deskripsi: 'admin' } });
+    const adminUser = await User.create({
+      nama: 'Super Admin', email: 'admin@admin.com', password: adminPass, nim: '0000000000'
+    });
+    await UserRole.create({ id_user: adminUser.id_user, id_role: adminRole.id_role });
 
-    const usersToCreate = [
-      { nama: 'Super Admin', email: 'admin@admin.com', password: hashedPassword, nim: '0000000000', roleName: 'admin' },
-      { nama: 'Budi Asdos', email: 'asdos@asdos.com', password: hashedPassword, nim: '1111111111', roleName: 'asdos' },
-      { nama: 'Siti Mahasiswa', email: 'mhs@mhs.com', password: hashedPassword, nim: '2222222222', roleName: 'mahasiswa' }
-    ];
+    // 5 Mahasiswa
+    const mhsPass = await bcrypt.hash('mhs123', 10);
+    const mhsRole = await Role.findOne({ where: { deskripsi: 'mahasiswa' } });
+    const asdosRole = await Role.findOne({ where: { deskripsi: 'asdos' } });
 
-    const createdUsers = {};
-    for (const u of usersToCreate) {
-      let user = await User.findOne({ where: { email: u.email } });
-      if (!user) {
-        user = await User.create({ nama: u.nama, email: u.email, password: u.password, nim: u.nim });
-        console.log(`✅ User created! Email: ${u.email} | Password: ${defaultPassword} | Role: ${u.roleName}`);
-      } else {
-        console.log(`✅ User ${u.email} already exists.`);
-      }
-      createdUsers[u.roleName] = user;
-
-      // Assign global role
-      const role = await Role.findOne({ where: { deskripsi: u.roleName } });
-      if (role && user) {
-        await UserRole.findOrCreate({ where: { id_user: user.id_user, id_role: role.id_role } });
-        console.log(`✅ Role '${u.roleName}' assigned to ${u.email}.`);
-      }
+    const mhsUsers = [];
+    for (let i = 1; i <= 5; i++) {
+      const u = await User.create({
+        nama: `Mahasiswa ${i}`, email: `mhs${i}@mhs.com`, password: mhsPass, nim: `111111111${i}`, prodi: 'Informatika', angkatan: 2024
+      });
+      await UserRole.create({ id_user: u.id_user, id_role: mhsRole.id_role }); // GLOBAL ROLE is always mahasiswa
+      mhsUsers.push(u);
     }
+    console.log('✅ Admin and 5 Mahasiswa users created.');
 
-    console.log('⏳ Seeding Praktikum, Enrollment, and Pertemuan...');
-    const praktikum = await Praktikum.create({
+    console.log('⏳ Seeding Praktikum (Classes)...');
+    
+    // Helper to generate 10 sessions based on system logic
+    const generateSessions = async (praktikum, tanggal_mulai, waktu_mulai, waktu_selesai) => {
+      const sessions = [];
+      for (let i = 0; i < 10; i++) {
+        const sessionDate = new Date(tanggal_mulai);
+        sessionDate.setDate(sessionDate.getDate() + (i * 7));
+        sessions.push({
+          id_praktikum: praktikum.id_praktikum,
+          sesi_ke: i + 1,
+          judul_pertemuan: `Pertemuan ${i + 1}`,
+          tanggal: sessionDate,
+          waktu_mulai: waktu_mulai,
+          waktu_selesai: waktu_selesai,
+          ruangan: praktikum.ruangan
+        });
+      }
+      await Pertemuan.bulkCreate(sessions);
+    };
+
+    // Praktikum 1
+    const p1 = await Praktikum.create({
       mata_kuliah: 'Pemrograman Web',
       kode_kelas: 'WEB-A',
       tahun_pelajaran: '2025/2026',
@@ -73,35 +107,38 @@ async function seed() {
       sks: 3,
       semester: 6
     });
-    console.log('✅ Dummy Praktikum created.');
+    await generateSessions(p1, '2026-08-01', '08:00', '10:00');
 
-    // Enroll asdos
-    const asdosRole = await Role.findOne({ where: { deskripsi: 'asdos' } });
-    await PraktikumUserRole.create({
-      id_user: createdUsers['asdos'].id_user,
-      id_role: asdosRole.id_role,
-      id_praktikum: praktikum.id_praktikum
+    // Praktikum 2
+    const p2 = await Praktikum.create({
+      mata_kuliah: 'Struktur Data',
+      kode_kelas: 'SDA-B',
+      tahun_pelajaran: '2025/2026',
+      jadwal: 'Rabu, 13:00 - 15:00',
+      ruangan: 'Lab Komputer 2',
+      sks: 3,
+      semester: 4
     });
+    await generateSessions(p2, '2026-08-03', '13:00', '15:00');
+
+    console.log('✅ Praktikum and 10 weekly sessions per Praktikum generated.');
+
+    console.log('⏳ Enrolling Users to Praktikum...');
     
-    // Enroll mahasiswa
-    const mhsRole = await Role.findOne({ where: { deskripsi: 'mahasiswa' } });
-    await PraktikumUserRole.create({
-      id_user: createdUsers['mahasiswa'].id_user,
-      id_role: mhsRole.id_role,
-      id_praktikum: praktikum.id_praktikum
-    });
-    console.log('✅ Asdos & Mahasiswa enrolled to Praktikum.');
+    // Praktikum 1: mhs1 is Asdos, mhs2-mhs5 are Mahasiswa
+    await PraktikumUserRole.create({ id_user: mhsUsers[0].id_user, id_role: asdosRole.id_role, id_praktikum: p1.id_praktikum });
+    for (let i = 1; i < 5; i++) {
+      await PraktikumUserRole.create({ id_user: mhsUsers[i].id_user, id_role: mhsRole.id_role, id_praktikum: p1.id_praktikum });
+    }
 
-    // Create 1 Pertemuan
-    await Pertemuan.create({
-      id_praktikum: praktikum.id_praktikum,
-      sesi_ke: 1,
-      judul_pertemuan: 'Pertemuan 1: Pengenalan HTML & CSS',
-      tanggal: new Date(),
-      waktu_mulai: '08:00:00',
-      waktu_selesai: '10:00:00'
-    });
-    console.log('✅ Dummy Pertemuan created.');
+    // Praktikum 2: mhs2 is Asdos, mhs1, mhs3-mhs5 are Mahasiswa
+    await PraktikumUserRole.create({ id_user: mhsUsers[1].id_user, id_role: asdosRole.id_role, id_praktikum: p2.id_praktikum });
+    await PraktikumUserRole.create({ id_user: mhsUsers[0].id_user, id_role: mhsRole.id_role, id_praktikum: p2.id_praktikum });
+    for (let i = 2; i < 5; i++) {
+      await PraktikumUserRole.create({ id_user: mhsUsers[i].id_user, id_role: mhsRole.id_role, id_praktikum: p2.id_praktikum });
+    }
+    
+    console.log('✅ Users enrolled contextually (Asdos and Mahasiswa).');
 
     console.log('🎉 Seeding completed successfully!');
     process.exit(0);
@@ -111,5 +148,4 @@ async function seed() {
   }
 }
 
-// Start seeding
 seed();

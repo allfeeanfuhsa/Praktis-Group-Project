@@ -2,25 +2,45 @@
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
 
+const { extractClientIP } = require('./ipBanMiddleware');
+const UserSession = require('../models/nosql/UserSession');
+
 const verifyToken = (req, res, next) => {
-  // 1. Get token from header (Format: "Bearer <token>")
+  // 2.1: Check both HttpOnly cookie AND Authorization header.
+  // Cookie takes priority (more secure); header is kept for backward compatibility.
+  const tokenFromCookie = req.cookies?.auth_token;
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Get the part after "Bearer"
+  const tokenFromHeader = authHeader && authHeader.split(' ')[1];
+
+  const token = tokenFromCookie || tokenFromHeader;
 
   if (!token) {
     return res.status(401).json({ message: 'Access Denied: No token provided' });
   }
 
   try {
-    // 2. Verify token
     const verified = jwt.verify(token, env.jwtSecret);
-    
-    // 3. Attach user info to request object so controllers can use it
-    req.user = verified; 
-    
-    next(); // Pass control to the next handler
+    req.user = verified;
+
+    // Asynchronously log/update active IP session without blocking response
+    const clientIP = extractClientIP(req);
+    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
+
+    UserSession.findOneAndUpdate(
+      { ip_address: clientIP, user_id: verified.id },
+      {
+        ip_address: clientIP,
+        user_id: verified.id,
+        user_roles: verified.roles || [],
+        user_agent: userAgent,
+        last_active: new Date()
+      },
+      { upsert: true, new: true }
+    ).catch(err => console.error('Session log error:', err));
+
+    next();
   } catch (error) {
-    res.status(400).json({ message: 'Invalid Token' });
+    res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
 

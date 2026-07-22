@@ -3,8 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const Tugas = require('../models/nosql/Tugas');
 const Materi = require('../models/nosql/Materi');
-// Import SQL Models
-const { Pertemuan, PraktikumUserRole, Role } = require('../models/sql');
+const Pengumpulan = require('../models/nosql/Pengumpulan'); // needed for cascade delete
+const { Op } = require('sequelize');
+const { Pertemuan, Praktikum, PraktikumUserRole, Role, Presensi } = require('../models/sql');
 
 // ==========================================
 // A. SESSION MANAGEMENT (SQL: Pertemuan)
@@ -63,12 +64,35 @@ exports.getSessionsByClass = async (req, res, next) => {
   }
 };
 
-// 3. Delete Session
+// 3. Delete Session — with cascade to MongoDB documents (2.6: orphan prevention)
 exports.deleteSession = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    // 1. Validate the session exists
+    const session = await Pertemuan.findByPk(id);
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+
+    // 2. Cascade: delete all MongoDB documents linked to this session
+    //    This fixes the referential integrity gap in the hybrid SQL/MongoDB design.
+    const tasksToDelete = await Tugas.find({ pertemuan_id: Number(id) });
+    const taskIds = tasksToDelete.map(t => t._id);
+
+    // Delete all submissions for these tasks
+    if (taskIds.length > 0) {
+      await Pengumpulan.deleteMany({ tugas_id: { $in: taskIds } });
+    }
+    // Delete the tasks themselves
+    await Tugas.deleteMany({ pertemuan_id: Number(id) });
+    // Delete all materials for this session
+    await Materi.deleteMany({ pertemuan_id: Number(id) });
+    // Delete attendance records for this session
+    await Presensi.destroy({ where: { id_pertemuan: id } });
+
+    // 3. Finally destroy the SQL session row
     await Pertemuan.destroy({ where: { id_pertemuan: id } });
-    res.json({ message: 'Session deleted' });
+
+    res.json({ message: 'Session and all associated content deleted successfully.' });
   } catch (error) {
     next(error);
   }
@@ -144,7 +168,7 @@ exports.getMaterialsBySession = async (req, res, next) => {
 exports.downloadMaterialFile = async (req, res, next) => {
   try {
     const { materiId, fileIndex } = req.params;
-    const material = await Materi.findById(materiId); //
+    const material = await Materi.findById(materiId);
 
     if (!material) {
       return res.status(404).json({ message: 'Material not found' });
@@ -155,43 +179,53 @@ exports.downloadMaterialFile = async (req, res, next) => {
       return res.status(404).json({ message: 'File not found' });
     }
 
-    // =========================================================
-    // FIX STARTS HERE
-    // =========================================================
-
-    // 1. Normalize path separators (fixes Windows backslashes \ if moved to Linux)
-    // We replace all backslashes with forward slashes before joining
+    // 1. Normalize path separators (fixes Windows backslashes if moved to Linux)
     const normalizedDbPath = file.path.replace(/\\/g, '/');
 
-    // 2. Resolve Path Relative to THIS controller file
-    // __dirname = .../server/controllers
-    // '..'      = .../server
-    // normalizedDbPath = uploads/materials/filename.pdf
-    // Result    = .../server/uploads/materials/filename.pdf
-    const filePath = path.join(__dirname, '..', normalizedDbPath);
-    // =========================================================
+    // 2. Resolve absolute path
+    const filePath = path.resolve(path.join(__dirname, '..', normalizedDbPath));
 
-    // Debugging: Print this to your console to verify it found the right spot
-    console.log("DB Path:", file.path);
-    console.log("Resolved System Path:", filePath);
+    // Security fix (SV-9): Path traversal guard.
+    // Ensure the resolved path is within the expected uploads directory.
+    const uploadsRoot = path.resolve(path.join(__dirname, '..', 'uploads'));
+    if (!filePath.startsWith(uploadsRoot + path.sep) && filePath !== uploadsRoot) {
+      return res.status(403).json({ message: 'Access denied: invalid file path' });
+    }
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
 
+    if (req.query.view === 'true') {
+      const mimeType = (file.mimetype && file.mimetype !== 'application/octet-stream') 
+        ? file.mimetype 
+        : undefined;
+
+      return res.sendFile(filePath, {
+        headers: {
+          ...(mimeType ? { 'Content-Type': mimeType } : {}),
+          'Content-Disposition': 'inline'
+        }
+      });
+    }
+
     // Set Headers
     res.setHeader('Content-Type', file.mimetype);
     res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
-    res.setHeader('Content-Length', file.size); //
+    res.setHeader('Content-Length', file.size);
 
-    // Create Stream
+    // Create Stream with error handling before headers are sent
     const stream = fs.createReadStream(filePath);
-    stream.pipe(res);
-
     stream.on('error', (err) => {
       console.error('Stream error:', err);
-      res.status(500).json({ message: 'Error downloading file' });
+      // Only send error response if headers haven't been sent yet
+      if (!res.headersSent) {
+        res.status(500).json({ message: 'Error downloading file' });
+      } else {
+        res.destroy();
+      }
     });
+    stream.pipe(res);
 
   } catch (error) {
     next(error);
@@ -204,7 +238,7 @@ exports.downloadMaterialFile = async (req, res, next) => {
 exports.updateSession = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { tanggal, waktu_mulai, waktu_selesai, ruangan, topik } = req.body; // Added 'topik' if you have it, or just standard fields
+    const { tanggal, waktu_mulai, waktu_selesai, ruangan } = req.body;
 
     // 1. Find the Session
     const session = await Pertemuan.findByPk(id);
@@ -212,18 +246,23 @@ exports.updateSession = async (req, res, next) => {
       return res.status(404).json({ message: 'Session not found' });
     }
 
-    // 2. Security Check (Optional but recommended)
-    // You can reuse the authorization logic from createSession here 
-    // to ensure only the assigned Asdos/Admin can edit.
+    // 2. Security fix (SV-8): Authorization check — only the assigned Asdos or Admin can edit.
+    const isAdmin = req.user.roles.includes('admin');
+    if (!isAdmin) {
+      const isAsdos = await PraktikumUserRole.findOne({
+        where: { id_praktikum: session.id_praktikum, id_user: req.user.id },
+        include: [{ model: Role, where: { deskripsi: 'asdos' } }]
+      });
+      if (!isAsdos) {
+        return res.status(403).json({ message: 'Forbidden: You are not the Asdos for this class.' });
+      }
+    }
 
-    // 3. Update Fields
-    // We only update fields that are actually sent in the body
+    // 3. Update Fields (only update fields that are actually sent)
     if (tanggal) session.tanggal = tanggal;
     if (waktu_mulai) session.waktu_mulai = waktu_mulai;
     if (waktu_selesai) session.waktu_selesai = waktu_selesai;
     if (ruangan) session.ruangan = ruangan;
-
-    // If you added a 'topik' or 'tema' column to SQL later, update it here too.
 
     await session.save();
 
@@ -274,14 +313,29 @@ exports.downloadTaskAttachment = async (req, res) => {
     const normalizedDbPath = file.path.replace(/\\/g, '/');
 
     // 2. RESOLVE PATH
-    // Use '..' to go from 'server/controllers' to 'server/'
-    const filePath = path.join(__dirname, '..', normalizedDbPath); 
-    
-    // Debugging
-    // console.log("Task File Path:", filePath);
+    const filePath = path.resolve(path.join(__dirname, '..', normalizedDbPath));
+
+    // Security fix (SV-9): Path traversal guard.
+    const uploadsRoot = path.resolve(path.join(__dirname, '..', 'uploads'));
+    if (!filePath.startsWith(uploadsRoot + path.sep) && filePath !== uploadsRoot) {
+      return res.status(403).json({ message: 'Access denied: invalid file path' });
+    }
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: 'File not found on server' });
+    }
+    
+    if (req.query.view === 'true') {
+      const mimeType = (file.mimetype && file.mimetype !== 'application/octet-stream') 
+        ? file.mimetype 
+        : undefined;
+
+      return res.sendFile(filePath, {
+        headers: {
+          ...(mimeType ? { 'Content-Type': mimeType } : {}),
+          'Content-Disposition': 'inline'
+        }
+      });
     }
     
     res.download(filePath, file.filename);
@@ -289,5 +343,111 @@ exports.downloadTaskAttachment = async (req, res) => {
   } catch (error) {
     console.error("Download Error:", error);
     res.status(500).json({ message: 'Error downloading file' });
+  }
+};
+
+// NEW: User Timeline Across All Enrolled Classes
+exports.getUserTimeline = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const roles = req.user.roles || [];
+    const isAdmin = roles.includes('admin');
+
+    // Build a map of id_praktikum -> role_name for this user's enrollments
+    const roleByClass = {};
+
+    if (isAdmin) {
+      const allClasses = await Praktikum.findAll({ attributes: ['id_praktikum'] });
+      allClasses.forEach(c => { roleByClass[c.id_praktikum] = 'admin'; });
+    } else {
+      // Fetch all role definitions to build a stable id->name map
+      const allRoles = await Role.findAll({ attributes: ['id_role', 'deskripsi'] });
+      const roleNameById = {};
+      allRoles.forEach(r => { roleNameById[r.id_role] = r.deskripsi; });
+
+      const enrollments = await PraktikumUserRole.findAll({
+        where: { id_user: userId },
+        attributes: ['id_praktikum', 'id_role']
+      });
+
+      enrollments.forEach(e => {
+        const roleName = roleNameById[e.id_role] || 'mahasiswa';
+        const existing = roleByClass[e.id_praktikum];
+        // If a user has multiple rows for the same class, prefer asdos over mahasiswa
+        if (!existing || roleName === 'asdos') {
+          roleByClass[e.id_praktikum] = roleName;
+        }
+      });
+    }
+
+    const classIds = Object.keys(roleByClass).map(Number);
+
+    if (classIds.length === 0) {
+      return res.json({ timeline: [] });
+    }
+
+    // Fetch all sessions for these classes
+    const sessions = await Pertemuan.findAll({
+      where: { id_praktikum: { [Op.in]: classIds } },
+      include: [
+        {
+          model: Praktikum,
+          attributes: ['id_praktikum', 'mata_kuliah', 'kode_kelas', 'ruangan']
+        }
+      ],
+      order: [['tanggal', 'ASC'], ['waktu_mulai', 'ASC']]
+    });
+
+    const sessionIds = sessions.map(s => s.id_pertemuan);
+
+    // Fetch materials & tasks count for these sessions in parallel
+    const [allMaterials, allTasks] = await Promise.all([
+      Materi.find({ pertemuan_id: { $in: sessionIds } }).select('pertemuan_id _id judul attachments deskripsi'),
+      Tugas.find({ pertemuan_id: { $in: sessionIds } }).select('pertemuan_id _id judul tenggat_waktu deskripsi attachments')
+    ]);
+
+    const materialsBySession = {};
+    allMaterials.forEach(m => {
+      const pid = m.pertemuan_id;
+      if (!materialsBySession[pid]) materialsBySession[pid] = [];
+      materialsBySession[pid].push(m);
+    });
+
+    const tasksBySession = {};
+    allTasks.forEach(t => {
+      const pid = t.pertemuan_id;
+      if (!tasksBySession[pid]) tasksBySession[pid] = [];
+      tasksBySession[pid].push(t);
+    });
+
+    // Map into chronological timeline items, including per-class role
+    const timeline = sessions.map(s => {
+      const mats = materialsBySession[s.id_pertemuan] || [];
+      const tsks = tasksBySession[s.id_pertemuan] || [];
+
+      return {
+        id_pertemuan: s.id_pertemuan,
+        id_praktikum: s.id_praktikum,
+        sesi_ke: s.sesi_ke,
+        tanggal: s.tanggal,
+        waktu_mulai: s.waktu_mulai,
+        waktu_selesai: s.waktu_selesai,
+        ruangan: s.ruangan || s.Praktikum?.ruangan,
+        mata_kuliah: s.Praktikum?.mata_kuliah || 'Praktikum',
+        kode_kelas: s.Praktikum?.kode_kelas || 'A',
+        // Per-class role: the role this user holds specifically in this class
+        user_role: roleByClass[s.id_praktikum] || 'mahasiswa',
+        materialsCount: mats.length,
+        tasksCount: tsks.length,
+        materials: mats,
+        tasks: tsks
+      };
+    });
+
+    res.json({ timeline });
+
+  } catch (error) {
+    console.error("Timeline Error:", error);
+    next(error);
   }
 };

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { motion } from 'framer-motion';
 
 const TugasUpload = () => {
     const { id_praktikum, id_tugas } = useParams();
+    const navigate = useNavigate();
 
     const [task, setTask] = useState(null);
     const [submission, setSubmission] = useState(null);
@@ -14,7 +16,7 @@ const TugasUpload = () => {
     const [uploading, setUploading] = useState(false);
     const [commentText, setCommentText] = useState("");
 
-    // 1. Fetch Data
+    // Fetch Data
     const fetchData = async () => {
         try {
             setLoading(true);
@@ -64,260 +66,286 @@ const TugasUpload = () => {
         }
     };
 
-    // --- FIX 1: DOWNLOAD TASK ATTACHMENT (SOAL) ---
-    const handleDownloadTaskAttachment = async (fileIndex, filename) => {
-        try {
-            const response = await api.get(`/api/content/tugas/${id_tugas}/download/${fileIndex}`, {
-                responseType: 'blob'
-            });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        } catch (err) {
-            alert("Gagal mendownload lampiran soal.");
-        }
-    };
-
-    // --- FIX 2: PREVIEW & DOWNLOAD MY SUBMISSION ---
-    // Mode: 'download' (save to disk) or 'preview' (open in new tab)
-    const handleMyFileAction = async (mode) => {
-        if (!submission) return;
-        try {
-            const response = await api.get(`/api/submission/download/${submission._id}`, {
-                responseType: 'blob'
-            });
-            
-            // Create a Blob URL
-            const fileBlob = new Blob([response.data], { type: submission.file.mimetype || 'application/pdf' });
-            const url = window.URL.createObjectURL(fileBlob);
-
-            if (mode === 'preview') {
-                // Open in new tab
-                window.open(url, '_blank');
-            } else {
-                // Download
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', submission.file.filename || 'tugas_saya.pdf');
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-            }
-        } catch (err) {
-            alert("Gagal mengakses file.");
-        }
-    };
     const handleSendComment = async () => {
-  if (!commentText.trim() || !submission) return;
+        if (!commentText.trim() || !submission) return;
 
-  try {
-    await api.post(`/api/submission/${submission._id}/comment`, {
-      text: commentText
-    });
+        try {
+            await api.post(`/api/submission/${submission._id}/comment`, {
+                text: commentText
+            });
+            setCommentText("");
+            fetchData();
+        } catch (err) {
+            alert("Gagal mengirim komentar.");
+        }
+    };
 
-    setCommentText("");
-    fetchData();
-  } catch (err) {
-    console.error("Error comment:", err);
-    alert("Gagal mengirim komentar.");
-  }
-};
-    const formatDate = (date) => {
-        return new Date(date).toLocaleDateString('id-ID', {
-            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleString('id-ID', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
         });
     };
-    if (loading) return <div className="text-center py-5">Loading...</div>;
-    if (!task) return <div className="alert alert-danger">Tugas tidak ditemukan.</div>;
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.08 }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 15 },
+        visible: { opacity: 1, y: 0 }
+    };
+
+    if (loading) {
+        return (
+            <div className="text-center py-5 text-light">
+                <div className="spinner-border text-light" role="status">
+                    <span className="visually-hidden">Loading tugas...</span>
+                </div>
+                <p className="opacity-75 mt-3 small">Memuat informasi tugas...</p>
+            </div>
+        );
+    }
+
+    if (!task) {
+        return (
+            <div className="glass-card static rounded-4 p-4 text-white text-center">
+                <i className="bi bi-exclamation-circle fs-1 d-block mb-3 text-danger"></i>
+                Tugas tidak ditemukan
+            </div>
+        );
+    }
+
+    const baseURL = api.defaults.baseURL || 'http://localhost:5000';
+    const isClosed = new Date() > new Date(task.tenggat_waktu);
 
     return (
         <div className="container-fluid px-0">
             {/* HEADER */}
-            <div className="mb-4">
-                <Link to={`/mahasiswa/kelas/${id_praktikum}/tugas`} className="text-decoration-none text-muted mb-2 d-inline-block">
-                    <i className="bi bi-arrow-left me-1"></i> Kembali ke Daftar
-                </Link>
-                <h3 className="fw-bold">{task.judul}</h3>
-            </div>
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
+                <button onClick={() => navigate(`/mahasiswa/kelas/${id_praktikum}/tugas`)} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
+                    <i className="bi bi-arrow-left me-2"></i>Kembali ke Daftar Tugas
+                </button>
+                <div className="d-flex align-items-center gap-3 flex-wrap">
+                    <h3 className="fw-bold text-white mb-0">{task.judul}</h3>
+                    {isClosed ? (
+                        <span className="badge bg-danger text-white border border-danger px-3 py-1.5 rounded-pill">Closed</span>
+                    ) : (
+                        <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-3 py-1.5 rounded-pill">Open</span>
+                    )}
+                </div>
+            </motion.div>
 
-            <div className="row">
-                {/* LEFT: Task Info */}
-                <div className="col-md-7 mb-4">
-                    <div className="card shadow-sm border-0 rounded-4">
-                        <div className="card-body p-4">
-                            <h5 className="fw-bold mb-3">Instruksi Tugas</h5>
-                            <p className="text-secondary" style={{ whiteSpace: 'pre-line' }}>
-                                {task.deskripsi || "Tidak ada deskripsi."}
-                            </p>
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="row g-4">
+                {/* LEFT COLUMN: Task Details */}
+                <motion.div variants={itemVariants} className="col-lg-7">
+                    {/* Task Info Card */}
+                    <div className="glass-card rounded-4 p-4 mb-4">
+                        <h5 className="fw-bold text-white mb-3 d-flex align-items-center">
+                            <i className="bi bi-file-earmark-text me-2 text-info"></i>Petunjuk Tugas
+                        </h5>
 
-                            <div className="d-flex align-items-center gap-3 mt-4 p-3 bg-light rounded-3 border">
-                                <i className="bi bi-clock-history fs-4 text-warning"></i>
-                                <div>
-                                    <small className="text-muted d-block fw-bold text-uppercase">Batas Waktu</small>
-                                    <span className="fw-bold">{formatDate(task.tenggat_waktu)}</span>
-                                </div>
-                            </div>
+                        <div className="mb-3 text-light opacity-75 small">
+                            <i className="bi bi-clock me-2 text-warning"></i>
+                            Tenggat Waktu: <strong className="text-white">{formatDate(task.tenggat_waktu)}</strong>
+                        </div>
 
-                            {/* === TASK ATTACHMENTS (CLICKABLE NOW) === */}
-                            {task.attachments && task.attachments.length > 0 && (
-                                <div className="mt-4">
-                                    <h6 className="fw-bold small text-muted text-uppercase">Lampiran Soal</h6>
+                        <div className="glass-card static p-3 rounded-3 mb-4 text-light" style={{ whiteSpace: 'pre-wrap', background: 'rgba(255,255,255,0.05)' }}>
+                            {task.deskripsi || 'Tidak ada deskripsi khusus.'}
+                        </div>
+
+                        {/* Task Attachments (Soal) */}
+                        {task.attachments && task.attachments.length > 0 && (
+                            <div>
+                                <h6 className="fw-bold text-light opacity-75 mb-2">Berkas Soal / Lampiran:</h6>
+                                <div className="d-flex flex-column gap-2">
                                     {task.attachments.map((file, idx) => (
-                                        <div 
-                                            key={idx} 
-                                            className="d-flex align-items-center gap-2 mt-2 p-2 rounded border bg-white hover-shadow" 
-                                            style={{cursor: 'pointer'}}
-                                            onClick={() => handleDownloadTaskAttachment(idx, file.filename)}
+                                        <a
+                                            key={idx}
+                                            href={`${baseURL}/api/content/tugas/${task._id}/download/${idx}?view=true`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="glass-card static rounded-3 p-3 text-white text-decoration-none d-flex justify-content-between align-items-center hover-opacity-100"
                                         >
-                                            <div className="bg-primary bg-opacity-10 p-2 rounded text-primary">
-                                                <i className="bi bi-file-earmark-arrow-down-fill"></i>
+                                            <div className="d-flex align-items-center gap-2">
+                                                <i className="bi bi-file-earmark-text fs-4 text-info"></i>
+                                                <span className="fw-bold">{file.filename}</span>
                                             </div>
-                                            <div className="text-dark fw-bold small">{file.filename}</div>
-                                        </div>
+                                            <span className="badge bg-light bg-opacity-25 text-white rounded-pill px-3 py-1.5">
+                                                Buka Soal <i className="bi bi-box-arrow-up-right ms-1"></i>
+                                            </span>
+                                        </a>
                                     ))}
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
-                </div>
 
-                {/* RIGHT: Submission Area */}
-                <div className="col-md-5">
-                    <div className="card shadow-sm border-0 rounded-4 h-100">
-                        <div className="card-header bg-white py-3 border-bottom-0">
-                            <h5 className="mb-0 fw-bold">Status Pengumpulan</h5>
-                        </div>
-                        <div className="card-body p-4">
-                            {submission ? (
-                                <div className="text-center">
-                                    {/* Status Badge */}
-                                    <div className="mb-4">
-                                        <span className={`badge rounded-pill px-3 py-2 ${submission.status === 'terlambat' ? 'bg-danger' : 'bg-success'}`}>
-                                            {submission.status === 'terlambat' ? 'Terlambat Mengumpulkan' : 'Diserahkan Tepat Waktu'}
-                                        </span>
-                                        <p className="text-muted small mt-2 mb-0">
-                                            Diserahkan pada: {formatDate(submission.submitted_at)}
-                                        </p>
+                    {/* DISCUSSION THREAD / COMMENTS */}
+                    {submission && (
+                        <div className="glass-card rounded-4 p-4">
+                            <h5 className="fw-bold text-white mb-3 d-flex align-items-center">
+                                <i className="bi bi-chat-left-text me-2 text-warning"></i>Diskusi & Feedback Asdos
+                            </h5>
+
+                            {/* Comment List */}
+                            <div className="d-flex flex-column gap-3 mb-4 max-h-300 overflow-y-auto pr-2">
+                                {(!submission.comments || submission.comments.length === 0) ? (
+                                    <div className="text-center py-4 text-light opacity-50 small">
+                                        Belum ada komentar pada pengumpulan ini.
                                     </div>
-
-                                    {/* === SUBMISSION FILE CARD (WITH PREVIEW) === */}
-                                    <div className="card border bg-light mb-4 text-start">
-                                        <div className="card-body">
-                                            <div className="d-flex align-items-center mb-3">
-                                                <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 me-3"></i>
-                                                <div className="overflow-hidden">
-                                                    <h6 className="fw-bold mb-0 text-truncate">{submission.file.filename}</h6>
-                                                    <small className="text-muted">{(submission.file.size / 1024).toFixed(1)} KB</small>
-                                                </div>
+                                ) : (
+                                    submission.comments.map((c, idx) => (
+                                        <div key={idx} className="glass-card static p-3 rounded-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                            <div className="d-flex justify-content-between align-items-center mb-1">
+                                                <strong className="text-white small">{c.user_name || 'User'}</strong>
+                                                <small className="text-light opacity-50" style={{ fontSize: '0.75rem' }}>
+                                                    {new Date(c.created_at).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                                                </small>
                                             </div>
-                                            
-                                            {/* Action Buttons */}
-                                            <div className="d-flex gap-2">
-                                                <button 
-                                                    onClick={() => handleMyFileAction('preview')}
-                                                    className="btn btn-sm btn-primary w-100 fw-bold"
-                                                >
-                                                    <i className="bi bi-eye me-2"></i>Lihat
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleMyFileAction('download')}
-                                                    className="btn btn-sm btn-outline-secondary w-100 fw-bold"
-                                                >
-                                                    <i className="bi bi-download me-2"></i>Unduh
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Grading Result */}
-                                    {submission.nilai !== undefined && submission.nilai !== null ? (
-                                        <div className="text-start border-top pt-3">
-                                            <h6 className="fw-bold small text-muted text-uppercase">Nilai & Feedback</h6>
-                                            <h2 className="fw-bold text-primary mb-0">{submission.nilai}/100</h2>
-                                            {submission.feedback && (
-                                                <div className="alert alert-info mt-2 small">
-                                                    <i className="bi bi-info-circle-fill me-2"></i>{submission.feedback}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="alert alert-warning d-flex align-items-center gap-2 text-start small">
-                                            <i className="bi bi-hourglass-split"></i>
-                                            <div>Menunggu penilaian dari Asisten Dosen.</div>
-                                        </div>
-                                    )}
-                                <div className="text-start border-top pt-3 mt-3">
-                                <h6 className="fw-bold small text-muted text-uppercase">
-                                    Diskusi / Komentar
-                                </h6>
-
-                                <div className="bg-light rounded-3 border p-3 mb-3" style={{ maxHeight: "220px", overflowY: "auto" }}>
-                                    {submission.comments && submission.comments.length > 0 ? (
-                                    submission.comments.map((comment, idx) => (
-                                        <div key={idx} className="mb-3">
-                                        <div className="small fw-bold text-muted">
-                                            {comment.senderName || "User"}
-                                        </div>
-                                        <div className="bg-white border rounded-3 p-2 small">
-                                            {comment.text}
-                                        </div>
-                                        <div className="text-muted mt-1" style={{ fontSize: "0.65rem" }}>
-                                            {comment.createdAt ? new Date(comment.createdAt).toLocaleString("id-ID") : ""}
-                                        </div>
+                                            <p className="text-light opacity-75 mb-0 small" style={{ whiteSpace: 'pre-wrap' }}>{c.text}</p>
                                         </div>
                                     ))
-                                    ) : (
-                                    <div className="text-muted small text-center py-3">
-                                        Belum ada komentar.
+                                )}
+                            </div>
+
+                            {/* Send Comment Input */}
+                            <div className="input-group">
+                                <input
+                                    type="text"
+                                    className="form-control bg-dark text-white border-light border-opacity-25 shadow-none"
+                                    placeholder="Tulis pesan atau pertanyaan..."
+                                    value={commentText}
+                                    onChange={(e) => setCommentText(e.target.value)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') handleSendComment(); }}
+                                />
+                                <button
+                                    className="btn btn-primary fw-bold px-4"
+                                    type="button"
+                                    onClick={handleSendComment}
+                                    disabled={!commentText.trim()}
+                                >
+                                    <i className="bi bi-send me-1"></i> Kirim
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </motion.div>
+
+                {/* RIGHT COLUMN: Submission Status & Upload Form */}
+                <motion.div variants={itemVariants} className="col-lg-5">
+                    {/* SUBMISSION STATUS CARD */}
+                    <div className="glass-card rounded-4 p-4 mb-4">
+                        <h5 className="fw-bold text-white mb-3 d-flex align-items-center">
+                            <i className="bi bi-cloud-arrow-up me-2 text-success"></i>Pengumpulan Tugas
+                        </h5>
+
+                        {submission ? (
+                            <div>
+                                <div className="glass-card static p-3 rounded-3 mb-3 border-light border-opacity-10" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <small className="text-light opacity-75 fw-bold text-uppercase" style={{ fontSize: '0.75rem' }}>Status Pengumpulan</small>
+                                        {submission.nilai !== null && submission.nilai !== undefined ? (
+                                            <span className="badge bg-primary text-white border border-primary px-3 py-1 rounded-pill fw-bold">
+                                                Nilai: {submission.nilai}/100
+                                            </span>
+                                        ) : (
+                                            <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-3 py-1 rounded-pill fw-bold">
+                                                Telah Terkumpul
+                                            </span>
+                                        )}
                                     </div>
+
+                                    <div className="text-light opacity-75 small mb-3">
+                                        Waktu Kirim: {formatDate(submission.submitted_at)}
+                                    </div>
+
+                                    {/* Download / View Submission File */}
+                                    {submission.file && (
+                                        <a
+                                            href={`${baseURL}/api/submission/download/${submission._id}?view=true`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-flex align-items-center gap-2 hover-opacity-100 w-100 justify-content-center"
+                                        >
+                                            <i className="bi bi-file-earmark-check text-success fs-5"></i>
+                                            <span className="text-truncate">{submission.file.filename || 'Tugas_Saya.pdf'}</span>
+                                            <i className="bi bi-box-arrow-up-right small"></i>
+                                        </a>
                                     )}
                                 </div>
 
-                                <div className="d-flex gap-2">
-                                    <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder="Tulis komentar..."
-                                    value={commentText}
-                                    onChange={(e) => setCommentText(e.target.value)}
-                                    onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
-                                    />
-                                    <button
-                                    className="btn btn-primary"
-                                    onClick={handleSendComment}
-                                    disabled={!commentText.trim()}
-                                    >
-                                    <i className="bi bi-send-fill"></i>
-                                    </button>
-                                </div>
-                                </div>
-                                </div>
-                            ) : (
-                                /* Upload Form */
-                                <form onSubmit={handleUpload}>
-                                    <div className="text-center mb-4">
-                                        <div className="bg-light rounded-circle d-inline-flex p-4 mb-3 text-muted">
-                                            <i className="bi bi-cloud-upload fs-1"></i>
+                                {/* Re-upload form if allowed */}
+                                {!isClosed && (
+                                    <div className="pt-2 border-top border-light border-opacity-10">
+                                        <label className="form-label small fw-bold text-light opacity-75 mb-2">
+                                            Kirim Ulang / Perbarui Berkas:
+                                        </label>
+                                        <form onSubmit={handleUpload}>
+                                            <input
+                                                type="file"
+                                                className="form-control bg-dark text-white border-light border-opacity-25 mb-3"
+                                                onChange={handleFileChange}
+                                                disabled={uploading}
+                                            />
+                                            <button
+                                                type="submit"
+                                                className="btn btn-outline-light rounded-pill fw-bold w-100 py-2"
+                                                disabled={uploading || !selectedFile}
+                                            >
+                                                {uploading ? 'Mengunggah...' : 'Perbarui Berkas Tugas'}
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* FIRST TIME UPLOAD FORM */
+                            <div>
+                                {isClosed ? (
+                                    <div className="alert alert-danger bg-danger bg-opacity-25 text-white border border-danger border-opacity-25 rounded-3 mb-0">
+                                        Tenggat waktu pengumpulan tugas telah berakhir.
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleUpload}>
+                                        <div className="mb-3">
+                                            <label className="form-label small fw-bold text-light opacity-75 mb-2">
+                                                Pilih Berkas Tugas (PDF, Word, ZIP, Gambar):
+                                            </label>
+                                            <input
+                                                type="file"
+                                                className="form-control bg-dark text-white border-light border-opacity-25 rounded-3"
+                                                onChange={handleFileChange}
+                                                required
+                                                disabled={uploading}
+                                            />
                                         </div>
-                                        <p className="text-muted small">Belum ada file yang dikumpulkan.</p>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold small">Upload File Jawaban</label>
-                                        <input type="file" className="form-control" onChange={handleFileChange} required />
-                                    </div>
-                                    <button type="submit" className="btn btn-primary w-100 fw-bold py-2 rounded-3" disabled={uploading}>
-                                        {uploading ? 'Mengupload...' : <><i className="bi bi-send-fill me-2"></i>Kumpulkan Tugas</>}
-                                    </button>
-                                </form>
-                            )}
-                        </div>
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary shadow-sm rounded-pill fw-bold w-100 py-2.5 d-flex align-items-center justify-content-center gap-2"
+                                            disabled={uploading || !selectedFile}
+                                        >
+                                            {uploading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2"></span>Mengunggah...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="bi bi-cloud-arrow-up fs-5"></i>
+                                                    <span>Kumpulkan Tugas Now</span>
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+                                )}
+                            </div>
+                        )}
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         </div>
     );
 };

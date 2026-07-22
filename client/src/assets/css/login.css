@@ -1,65 +1,99 @@
 /* src/assets/css/Login.css */
 
-/* Kita ganti 'body' jadi .login-wrapper agar tidak merusak halaman lain */
 .login-wrapper {
-    font-family: 'Poppins', sans-serif;
-    height: 100vh;
+    font-family: 'Poppins', 'Inter', system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
     overflow: hidden;
     width: 100%;
 }
 
-/* --- BAGIAN KIRI (GAMBAR/HERO) --- */
+/* --- BAGIAN KIRI (HERO BLUE GRADIENT WITH HIGH-TECH AMBIENCE) --- */
 .login-left {
-    background: linear-gradient(135deg, rgba(13, 110, 253, 0.92), rgba(4, 29, 83, 0.95)), 
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.94), rgba(3, 20, 65, 0.97)), 
                 url('https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=2070&auto=format&fit=crop');
     background-size: cover;
     background-position: center;
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
     color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+/* High-tech grid background overlay */
+.tech-grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+    -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 80%);
+    pointer-events: none;
 }
 
 .login-brand-content {
     text-align: center;
     padding: 3rem;
-    max-width: 750px;
+    max-width: 680px;
+    z-index: 2;
 }
 
 .brand-title {
-    font-size: 3.5rem;
-    font-weight: 700;
-    line-height: 1.1;
-    margin-bottom: 1.5rem;
-    letter-spacing: -1px;
+    font-size: 4.5rem;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 1.2rem;
+    letter-spacing: -2px;
+    color: #ffffff;
+    text-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .brand-desc {
     font-size: 1.1rem;
     font-weight: 300;
-    opacity: 0.9;
+    color: rgba(255, 255, 255, 0.9);
     line-height: 1.8;
 }
 
-/* --- BAGIAN KANAN (FORM) --- */
+/* --- BAGIAN KANAN (FORM CLEAN WHITE & BLUE) --- */
 .login-right {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     background-color: #ffffff;
+    padding: 2rem;
 }
 
 .login-card {
     width: 100%;
     max-width: 420px;
-    padding: 2rem;
+    padding: 2rem 1.5rem;
 }
 
-/* Perbaikan sedikit pada form control agar rapi */
-.form-control {
-    padding: 0.8rem 1rem;
-    font-size: 0.95rem;
-    border-radius: 8px;
+.form-control.bg-light {
+    background-color: #f8f9fa !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #1e293b !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.form-control.bg-light:focus {
+    background-color: #ffffff !important;
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.15) !important;
+}
+
+.hover-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(13, 110, 253, 0.2) !important;
 }

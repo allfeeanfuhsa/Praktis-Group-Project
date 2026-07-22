@@ -12,8 +12,31 @@ const createUploader = (subfolder) => {
     fs.mkdirSync(uploadDir, { recursive: true });
   }
 
+  const checkStorageLimit = () => {
+    const maxStorageMB = parseInt(process.env.MAX_STORAGE_LIMIT_MB) || 5000;
+    const maxStorageBytes = maxStorageMB * 1024 * 1024;
+    const rootUploads = path.join(__dirname, '../uploads');
+    
+    let size = 0;
+    const calculateSize = (dir) => {
+      if (fs.existsSync(dir)) {
+        fs.readdirSync(dir).forEach(file => {
+          const fp = path.join(dir, file);
+          const stat = fs.statSync(fp);
+          if (stat.isFile()) size += stat.size;
+          else if (stat.isDirectory()) calculateSize(fp);
+        });
+      }
+    };
+    calculateSize(rootUploads);
+    return size >= maxStorageBytes;
+  };
+
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
+      if (checkStorageLimit()) {
+        return cb(new Error('Kapasitas penyimpanan sistem telah penuh (Storage Quota Exceeded). Hubungi Administrator.'), null);
+      }
       cb(null, uploadDir);
     },
     filename: (req, file, cb) => {

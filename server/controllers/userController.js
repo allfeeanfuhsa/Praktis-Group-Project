@@ -1,5 +1,8 @@
 // server/controllers/userController.js
-const { User, Praktikum, PraktikumUserRole, Role } = require('../models/sql');
+const { Op } = require('sequelize'); // Fix BG-1: Op was used but never imported
+const { User, Praktikum, PraktikumUserRole, Role, Pertemuan } = require('../models/sql');
+const Tugas = require('../models/nosql/Tugas');
+const Pengumpulan = require('../models/nosql/Pengumpulan');
 const bcrypt = require('bcryptjs');
 const response = require('../utils/responseHelper');
 
@@ -144,21 +147,81 @@ exports.getAsdosDashboard = async (req, res) => {
       ]
     });
 
-    // Format data
-    const teachingClasses = assignments.map(a => {
+    // Format data with additional stats per class
+    const teachingClassesRaw = await Promise.all(assignments.map(async (a) => {
         if (!a.Praktikum) return null;
+        
+        const id_praktikum = a.Praktikum.id_praktikum;
+
+        // 1. Student Count
+        const studentCount = await PraktikumUserRole.count({
+            where: { id_praktikum },
+            include: [{ model: Role, where: { deskripsi: 'mahasiswa' } }]
+        });
+
+        // 2. Next Session (Find closest future date, fallback to latest past session)
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        let nextSession = await Pertemuan.findOne({
+            where: { 
+                id_praktikum,
+                tanggal: { [Op.gte]: today }
+            },
+            order: [['tanggal', 'ASC']]
+        });
+
+        let isPastSession = false;
+        if (!nextSession) {
+            nextSession = await Pertemuan.findOne({
+                where: { id_praktikum },
+                order: [['tanggal', 'DESC']]
+            });
+            if (nextSession) isPastSession = true;
+        }
+
+        // 3. Ungraded Tasks
+        const sessions = await Pertemuan.findAll({
+            where: { id_praktikum },
+            attributes: ['id_pertemuan']
+        });
+        const sessionIds = sessions.map(s => s.id_pertemuan);
+
+        const tasks = await Tugas.find({ pertemuan_id: { $in: sessionIds } }).select('_id');
+        const taskIds = tasks.map(t => t._id);
+
+        const ungradedCount = await Pengumpulan.countDocuments({
+            tugas_id: { $in: taskIds },
+            $or: [{ status: 'diserahkan' }, { nilai: null }]
+        });
+
         return {
             id_praktikum: a.Praktikum.id_praktikum,
-            nama_praktikum: a.Praktikum.mata_kuliah, // We map 'mata_kuliah' to 'nama_praktikum' for frontend consistency
+            nama_praktikum: a.Praktikum.mata_kuliah, 
             kode: a.Praktikum.kode_kelas,
             jadwal: a.Praktikum.jadwal,
             ruangan: a.Praktikum.ruangan,
-            tahun_pelajaran: a.Praktikum.tahun_pelajaran
+            tahun_pelajaran: a.Praktikum.tahun_pelajaran,
+            studentCount,
+            nextSessionDate: nextSession ? nextSession.tanggal : null,
+            nextSessionSesiKe: nextSession ? nextSession.sesi_ke : null,
+            isPastSession,
+            ungradedCount
         };
-    }).filter(item => item !== null);
+    }));
+    
+    const teachingClasses = teachingClassesRaw.filter(item => item !== null);
+    
+    // Aggregate global stats for top cards
+    const totalStudents = teachingClasses.reduce((sum, cls) => sum + cls.studentCount, 0);
+    const pendingGrading = teachingClasses.reduce((sum, cls) => sum + cls.ungradedCount, 0);
 
     res.json({
-        stats: { totalClasses: teachingClasses.length },
+        stats: { 
+            totalClasses: teachingClasses.length,
+            totalStudents,
+            pendingGrading
+        },
         classes: teachingClasses
     });
 
@@ -175,35 +238,121 @@ exports.getMahasiswaDashboard = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // 1. Fetch all class enrollments for this user
     const enrollments = await PraktikumUserRole.findAll({
       where: { id_user: userId },
       include: [
         { 
             model: Praktikum,
-            attributes: ['id_praktikum', 'mata_kuliah', 'kode_kelas', 'jadwal'] 
+            attributes: ['id_praktikum', 'mata_kuliah', 'kode_kelas', 'jadwal', 'ruangan', 'tahun_pelajaran'] 
         },
         { 
-            model: Role, 
-            // CORRECTION: Using 'deskripsi' based on your Role.js
-            where: { deskripsi: 'mahasiswa' } 
+            model: Role
         }
       ]
     });
 
-    // Format for Frontend
-    const enrolledClasses = enrollments.map(e => {
+    // Exclude ONLY classes where user's role in that specific class is explicitly 'asdos'
+    const mhsEnrollments = enrollments.filter(e => e.Praktikum && (!e.Role || e.Role.deskripsi?.toLowerCase() !== 'asdos'));
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    // Format for Frontend with next session date and pending tasks count
+    const enrolledClassesRaw = await Promise.all(mhsEnrollments.map(async (e) => {
         if (!e.Praktikum) return null;
+        const id_praktikum = e.Praktikum.id_praktikum;
+
+        let nextSessionDate = null;
+        let nextSessionSesiKe = null;
+        let isPastSession = false;
+        let pendingTaskCount = 0;
+        let closestDeadlineDays = null;
+
+        try {
+            // 1. Next Session (Find closest future session date, fallback to latest completed session)
+            let nextSession = await Pertemuan.findOne({
+                where: { 
+                    id_praktikum,
+                    tanggal: { [Op.gte]: today }
+                },
+                order: [['tanggal', 'ASC']]
+            });
+
+            if (!nextSession) {
+                nextSession = await Pertemuan.findOne({
+                    where: { id_praktikum },
+                    order: [['tanggal', 'DESC']]
+                });
+                if (nextSession) isPastSession = true;
+            }
+
+            if (nextSession) {
+                nextSessionDate = nextSession.tanggal;
+                nextSessionSesiKe = nextSession.sesi_ke;
+            }
+
+            // 2. Pending Tasks calculation
+            const sessions = await Pertemuan.findAll({
+                where: { id_praktikum },
+                attributes: ['id_pertemuan']
+            });
+            const sessionIds = sessions.map(s => s.id_pertemuan);
+
+            if (sessionIds.length > 0) {
+                const tasks = await Tugas.find({ 
+                    pertemuan_id: { $in: sessionIds },
+                    tenggat_waktu: { $gte: new Date() }
+                }).sort({ tenggat_waktu: 1 });
+
+                const taskIds = tasks.map(t => t._id);
+
+                // Note: Schema field is student_id (Number)
+                const mySubmissions = await Pengumpulan.find({
+                    student_id: Number(userId),
+                    tugas_id: { $in: taskIds }
+                }).select('tugas_id');
+
+                const submittedTaskIds = new Set(mySubmissions.map(s => s.tugas_id.toString()));
+                const uncompletedTasks = tasks.filter(t => !submittedTaskIds.has(t._id.toString()));
+
+                pendingTaskCount = uncompletedTasks.length;
+
+                if (uncompletedTasks.length > 0) {
+                    const closestDue = new Date(uncompletedTasks[0].tenggat_waktu);
+                    const now = new Date();
+                    const diffDays = Math.ceil((closestDue - now) / (1000 * 60 * 60 * 24));
+                    closestDeadlineDays = diffDays >= 0 ? diffDays : 0;
+                }
+            }
+        } catch (err) {
+            console.error(`Error processing metrics for praktikum ${id_praktikum}:`, err);
+        }
+
         return {
             id_praktikum: e.Praktikum.id_praktikum,
-            nama_praktikum: e.Praktikum.mata_kuliah, // Map DB 'mata_kuliah' -> Frontend 'nama_praktikum'
+            nama_praktikum: e.Praktikum.mata_kuliah,
             kode: e.Praktikum.kode_kelas,
-            jadwal: e.Praktikum.jadwal
+            jadwal: e.Praktikum.jadwal,
+            ruangan: e.Praktikum.ruangan,
+            tahun_pelajaran: e.Praktikum.tahun_pelajaran,
+            nextSessionDate,
+            nextSessionSesiKe,
+            isPastSession,
+            pendingTaskCount,
+            closestDeadlineDays
         };
-    }).filter(item => item !== null);
+    }));
+
+    const enrolledClasses = enrolledClassesRaw.filter(item => item !== null);
+    const totalPendingTasks = enrolledClasses.reduce((sum, cls) => sum + cls.pendingTaskCount, 0);
 
     res.json({
-        stats: { activeClasses: enrolledClasses.length },
-        enrolledClasses: enrolledClasses // Matches SidebarMhs.jsx
+        stats: { 
+          activeClasses: enrolledClasses.length,
+          assignmentsPending: totalPendingTasks
+        },
+        enrolledClasses: enrolledClasses
     });
 
   } catch (error) {

@@ -6,7 +6,8 @@ const submissionController = require('../controllers/submissionController');
 // Middlewares
 const verifyToken = require('../middleware/authMiddleware');
 const checkRole = require('../middleware/rbacMiddleware');
-const createUploader = require('../middleware/uploadMiddleware'); // Import Factory
+const createUploader = require('../middleware/uploadMiddleware');
+const validateMimeType = require('../middleware/validateMimeType'); // 2.7
 
 // Setup specific uploader for Submissions
 const uploadSubmission = createUploader('submissions');
@@ -25,7 +26,8 @@ router.use(verifyToken);
  * @body    form-data: { tugas_id: "...", file: [PDF/Doc] }
  */
 router.post('/',
-  uploadSubmission.single('file'), // Handle File Upload first
+  uploadSubmission.single('file'),
+  validateMimeType,                 // 2.7: Magic bytes check after upload
   submissionController.submitWork
 );
 
@@ -58,8 +60,12 @@ router.get('/me/:taskId', submissionController.getMySubmission);
 
 router.post('/me/bulk-check', submissionController.getMySubmissionsForTasks);
 
-router.get('/download/:submissionId', submissionController.downloadFile);
+// Security fix (SV-7): Both download paths now require authentication.
+// The /:submissionId/download path is handled above (line 47) under router.use(verifyToken).
+// This duplicate path was missing verifyToken — fixed by adding it explicitly.
+router.get('/download/:submissionId', verifyToken, submissionController.downloadFile);
 
-router.post('/:submissionId/comment', submissionController.addComment);
+// Security fix: Comment endpoint now requires authentication
+router.post('/:submissionId/comment', verifyToken, submissionController.addComment);
 
 module.exports = router;

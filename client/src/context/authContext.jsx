@@ -1,7 +1,8 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardByRole } from '../utils/roleHelper'; // Import the helper
+import { getDashboardByRole } from '../utils/roleHelper';
+import api from '../utils/api'; // For calling logout endpoint
 
 const AuthContext = createContext();
 
@@ -56,13 +57,20 @@ export const AuthProvider = ({ children }) => {
     navigate(targetPath);
   };
 
-  // 3. Logout Function
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-    navigate('/auth/login');
+  // 3. Logout Function — calls server to clear the HttpOnly cookie (2.1)
+  const logout = async () => {
+    try {
+      // Server clears the HttpOnly cookie
+      await api.post('/api/auth/logout');
+    } catch {
+      // Even if server call fails, clear local state
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setToken(null);
+      setUser(null);
+      navigate('/auth/login');
+    }
   };
 
   return (
