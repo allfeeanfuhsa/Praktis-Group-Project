@@ -148,11 +148,11 @@ const ManajemenSesiIP = () => {
 
   const getMethodBadgeClass = (method) => {
     switch (method) {
-      case 'GET': return 'bg-success bg-opacity-15 text-success border-success';
-      case 'POST': return 'bg-primary bg-opacity-15 text-primary border-primary';
-      case 'PUT': return 'bg-warning bg-opacity-15 text-warning border-warning';
-      case 'DELETE': return 'bg-danger bg-opacity-15 text-danger border-danger';
-      default: return 'bg-secondary bg-opacity-15 text-secondary border-secondary';
+      case 'GET': return 'bg-success text-white';
+      case 'POST': return 'bg-primary text-white';
+      case 'PUT': return 'bg-warning text-dark';
+      case 'DELETE': return 'bg-danger text-white';
+      default: return 'bg-secondary text-white';
     }
   };
 
@@ -437,8 +437,8 @@ const ManajemenSesiIP = () => {
               <div>
                 <div className="d-flex align-items-center gap-2 mb-1">
                   <h5 className="fw-bold text-dark mb-0">Dinamika Trafik API & Volume Bandwidth</h5>
-                  <span className="badge bg-success bg-opacity-15 text-success border border-success border-opacity-25 px-2 py-0.5 rounded-pill fw-bold d-inline-flex align-items-center gap-1" style={{ fontSize: '0.72rem' }}>
-                    <span className="spinner-grow spinner-grow-sm text-success" style={{ width: '8px', height: '8px' }}></span>
+                  <span className="badge bg-success text-white px-2.5 py-1 rounded-pill fw-bold d-inline-flex align-items-center gap-1.5" style={{ fontSize: '0.72rem' }}>
+                    <span className="spinner-grow spinner-grow-sm text-white" style={{ width: '8px', height: '8px' }}></span>
                     <span>LIVE Auto-Refresh</span>
                   </span>
                 </div>
@@ -486,12 +486,12 @@ const ManajemenSesiIP = () => {
                 <AreaChart data={formattedTimeSeries} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorReq" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
                     </linearGradient>
                     <linearGradient id="colorBw" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -613,7 +613,7 @@ const ManajemenSesiIP = () => {
                             </button>
                           </td>
                           <td>
-                            <span className={`badge border rounded-pill px-2.5 py-1 font-monospace fw-bold ${getMethodBadgeClass(log.method)}`} style={{ fontSize: '0.72rem' }}>
+                            <span className={`badge rounded-pill px-2.5 py-1 font-monospace fw-bold ${getMethodBadgeClass(log.method)}`} style={{ fontSize: '0.72rem' }}>
                               {log.method}
                             </span>
                           </td>
