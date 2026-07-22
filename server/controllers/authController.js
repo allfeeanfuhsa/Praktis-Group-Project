@@ -82,6 +82,35 @@ exports.logout = (req, res) => {
   res.json({ message: 'Logged out successfully' });
 };
 
-exports.me = (req, res) => {
-  res.json(req.user);
+exports.me = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      include: [{ model: Role, through: { attributes: [] } }]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let roles = user.Roles.map(r => r.deskripsi);
+    const isAsdos = await PraktikumUserRole.findOne({
+      where: { id_user: user.id_user },
+      include: [{ model: Role, where: { deskripsi: 'asdos' } }]
+    });
+    if (isAsdos && !roles.includes('asdos')) {
+      roles.push('asdos');
+    }
+
+    res.json({
+      user: {
+        id: user.id_user,
+        nama: user.nama,
+        email: user.email,
+        roles: roles
+      }
+    });
+  } catch (error) {
+    logger.error('Me endpoint error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };

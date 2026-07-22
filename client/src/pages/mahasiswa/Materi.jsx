@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const MateriMhs = () => {
     const { id_praktikum } = useParams();
@@ -138,18 +139,13 @@ const MateriMhs = () => {
 
     return (
         <div className="container-fluid p-0">
-            {/* HEADER */}
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
-                <button onClick={() => navigate('/mahasiswa/dashboard')} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-                    <i className="bi bi-arrow-left me-2"></i>Kembali ke Dashboard
-                </button>
-                <div className="d-flex justify-content-between align-items-end flex-wrap gap-3">
-                    <div>
-                        <h3 className="fw-bold text-white mb-1">Bank Materi</h3>
-                        <p className="text-light opacity-75 small mb-0">Total {filteredMaterials.length} dari {allMaterials.length} file materi terunggah</p>
-                    </div>
-                </div>
-            </motion.div>
+            {/* HEADER BANNER */}
+            <ClassHeaderBanner 
+                id_praktikum={id_praktikum} 
+                activeTab="Bank Materi Pembelajaran" 
+                backUrl="/mahasiswa/dashboard" 
+                backLabel="Kembali ke Dashboard" 
+            />
 
             {/* SEARCH AND FILTER CONTROLS */}
             {allMaterials.length > 0 && (

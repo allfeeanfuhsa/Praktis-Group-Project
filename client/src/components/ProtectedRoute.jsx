@@ -4,17 +4,23 @@ import { useAuth } from '../context/authContext';
 import { getDashboardByRole } from '../utils/roleHelper'; // Import the helper
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-    const { user, token } = useAuth();
+    const { user, loading } = useAuth();
     const location = useLocation();
 
-    // 1. Check if not logged in
-    if (!token) {
-        return <Navigate to="/auth/login" state={{ from: location }} replace />;
+    // 0. Wait for session hydration to finish
+    if (loading) {
+        return (
+            <div className="d-flex justify-content-center align-items-center vh-100 bg-dark text-white">
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Validating Session...</span>
+                </div>
+            </div>
+        );
     }
 
-    // 2. Check if user data is loaded
+    // 1. Check if not logged in
     if (!user) {
-        return <Navigate to="/auth/login" replace />;
+        return <Navigate to="/auth/login" state={{ from: location }} replace />;
     }
 
     // 3. Check Role Permission

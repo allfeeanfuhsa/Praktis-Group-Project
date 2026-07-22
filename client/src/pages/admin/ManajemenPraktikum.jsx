@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import api from '../../utils/api';
 import { useForm } from '../../hooks/useForm';
 
 const ManajemenPraktikum = () => {
+    const location = useLocation();
     const [labs, setLabs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [editingId, setEditingId] = useState(null);
@@ -139,13 +140,21 @@ const ManajemenPraktikum = () => {
     };
 
     // 2.4: Fetch REAL sessions from the API when modal is opened
-    const handleOpenSession = async (lab) => {
+    const handleOpenSession = async (lab, targetSessionId = null) => {
         setSelectedLab(lab);
         setShowSessionModal(true);
         setSessionsLoading(true);
         try {
             const res = await api.get(`/api/content/session/list/${lab.id_praktikum}`);
-            setSessions(Array.isArray(res.data) ? res.data : []);
+            const sessionList = Array.isArray(res.data) ? res.data : [];
+            setSessions(sessionList);
+
+            if (targetSessionId) {
+                const targetSession = sessionList.find(s => String(s.id_pertemuan) === String(targetSessionId));
+                if (targetSession) {
+                    handleEditSession(targetSession);
+                }
+            }
         } catch (err) {
             console.error('Error fetching sessions:', err);
             setSessions([]);
@@ -153,6 +162,18 @@ const ManajemenPraktikum = () => {
             setSessionsLoading(false);
         }
     };
+
+    // Auto-open Session Modal if navigated from Timeline with openSessionClassId
+    useEffect(() => {
+        if (!loading && labs.length > 0 && location.state?.openSessionClassId) {
+            const targetClassId = String(location.state.openSessionClassId);
+            const targetSessionId = location.state?.targetSessionId;
+            const targetClass = labs.find(c => String(c.id_praktikum) === targetClassId);
+            if (targetClass) {
+                handleOpenSession(targetClass, targetSessionId);
+            }
+        }
+    }, [loading, labs, location.state]);
 
     const handleCloseSession = () => {
         setSelectedLab(null);

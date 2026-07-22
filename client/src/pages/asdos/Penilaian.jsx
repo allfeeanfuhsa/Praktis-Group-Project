@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const PenilaianAsdos = () => {
   const { id_praktikum, id_tugas } = useParams();
@@ -213,14 +214,13 @@ const PenilaianAsdos = () => {
 
   return (
     <div className="container-fluid p-0">
-      {/* HEADER */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
-        <button onClick={() => navigate(`/asdos/kelas/${id_praktikum}/tugas`)} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-          <i className="bi bi-arrow-left me-2"></i>Kembali ke Daftar Tugas
-        </button>
-        <h3 className="fw-bold text-white mb-2">Penilaian: {taskTitle}</h3>
-        <p className="text-light opacity-75 small">Kelola dan berikan nilai untuk hasil pengumpulan mahasiswa.</p>
-      </motion.div>
+      {/* HEADER BANNER */}
+      <ClassHeaderBanner 
+        id_praktikum={id_praktikum} 
+        activeTab={`Penilaian: ${taskTitle || 'Tugas'}`} 
+        backUrl={`/asdos/kelas/${id_praktikum}/tugas`} 
+        backLabel="Kembali ke Daftar Tugas" 
+      />
 
       {/* QUICK STATS BAR */}
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="row g-3 mb-4">

@@ -64,6 +64,18 @@ exports.getSessionsByClass = async (req, res, next) => {
   }
 };
 
+// 2b. Get Single Class Info (for header banners)
+exports.getClassInfo = async (req, res, next) => {
+  try {
+    const { id_praktikum } = req.params;
+    const cls = await Praktikum.findByPk(id_praktikum);
+    if (!cls) return res.status(404).json({ message: 'Kelas tidak ditemukan' });
+    res.json({ classInfo: cls });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // 3. Delete Session — with cascade to MongoDB documents (2.6: orphan prevention)
 exports.deleteSession = async (req, res, next) => {
   try {

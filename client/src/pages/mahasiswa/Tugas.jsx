@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const TugasMhs = () => {
   const { id_praktikum } = useParams();
@@ -96,14 +97,13 @@ const TugasMhs = () => {
 
   return (
     <div className="container-fluid px-0">
-      {/* HEADER */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
-        <button onClick={() => navigate('/mahasiswa/dashboard')} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-          <i className="bi bi-arrow-left me-2"></i>Kembali ke Dashboard
-        </button>
-        <h3 className="fw-bold text-white mb-1">Daftar Tugas Praktikum</h3>
-        <p className="text-light opacity-75 small mb-0">Kerjakan dan kumpulkan berkas tugas sebelum tenggat waktu yang ditentukan.</p>
-      </motion.div>
+      {/* HEADER BANNER */}
+      <ClassHeaderBanner 
+        id_praktikum={id_praktikum} 
+        activeTab="Tugas Praktikum" 
+        backUrl="/mahasiswa/dashboard" 
+        backLabel="Kembali ke Dashboard" 
+      />
 
       {/* TASK LIST GRID */}
       {taskList.length === 0 ? (

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const TugasUpload = () => {
     const { id_praktikum, id_tugas } = useParams();
@@ -124,20 +125,13 @@ const TugasUpload = () => {
 
     return (
         <div className="container-fluid px-0">
-            {/* HEADER */}
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
-                <button onClick={() => navigate(`/mahasiswa/kelas/${id_praktikum}/tugas`)} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-                    <i className="bi bi-arrow-left me-2"></i>Kembali ke Daftar Tugas
-                </button>
-                <div className="d-flex align-items-center gap-3 flex-wrap">
-                    <h3 className="fw-bold text-white mb-0">{task.judul}</h3>
-                    {isClosed ? (
-                        <span className="badge bg-danger text-white border border-danger px-3 py-1.5 rounded-pill">Closed</span>
-                    ) : (
-                        <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-3 py-1.5 rounded-pill">Open</span>
-                    )}
-                </div>
-            </motion.div>
+            {/* HEADER BANNER */}
+            <ClassHeaderBanner 
+                id_praktikum={id_praktikum} 
+                activeTab={`Pengumpulan: ${task.judul}`} 
+                backUrl={`/mahasiswa/kelas/${id_praktikum}/tugas`} 
+                backLabel="Kembali ke Daftar Tugas" 
+            />
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="row g-4">
                 {/* LEFT COLUMN: Task Details */}
@@ -201,9 +195,9 @@ const TugasUpload = () => {
                                     submission.comments.map((c, idx) => (
                                         <div key={idx} className="glass-card static p-3 rounded-3" style={{ background: 'rgba(255,255,255,0.04)' }}>
                                             <div className="d-flex justify-content-between align-items-center mb-1">
-                                                <strong className="text-white small">{c.user_name || 'User'}</strong>
+                                                <strong className="text-white small">{c.senderName || c.user_name || 'User'}</strong>
                                                 <small className="text-light opacity-50" style={{ fontSize: '0.75rem' }}>
-                                                    {new Date(c.created_at).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                                                    {new Date(c.createdAt || c.created_at || Date.now()).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
                                                 </small>
                                             </div>
                                             <p className="text-light opacity-75 mb-0 small" style={{ whiteSpace: 'pre-wrap' }}>{c.text}</p>

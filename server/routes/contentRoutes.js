@@ -31,6 +31,10 @@ router.get('/session/list/:id_praktikum',
   contentController.getSessionsByClass
 );
 
+router.get('/class-info/:id_praktikum', 
+  contentController.getClassInfo
+);
+
 // NEW: Update (Reschedule)
 router.put('/session/:id', 
   checkRole(['asdos', 'admin']), 

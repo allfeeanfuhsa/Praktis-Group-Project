@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const SessionDetail = () => {
     const { id_pertemuan, id_praktikum } = useParams();
@@ -123,14 +124,13 @@ const SessionDetail = () => {
 
     return (
         <div className="container-fluid p-4">
-            {/* HEADER */}
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-5">
-                <button onClick={() => window.history.back()} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-                    <i className="bi bi-arrow-left me-2"></i>Kembali ke Jadwal
-                </button>
-                <h3 className="fw-bold text-white">Kelola Konten Pertemuan</h3>
-                <p className="text-light opacity-75 small">Upload materi pembelajaran atau buat tugas baru.</p>
-            </motion.div>
+            {/* HEADER BANNER */}
+            <ClassHeaderBanner 
+                id_praktikum={id_praktikum} 
+                activeTab="Kelola Pertemuan & Modul" 
+                backUrl={`/asdos/kelas/${id_praktikum}/jadwal`} 
+                backLabel="Kembali ke Jadwal Sesi" 
+            />
 
             <motion.div variants={containerVariants} initial="hidden" animate="visible" className="row">
                 {/* LEFT COLUMN: CONTENT LIST */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const PresensiAsdos = () => {
     const { id_praktikum } = useParams();
@@ -219,18 +220,13 @@ const PresensiAsdos = () => {
 
     return (
         <div className="container-fluid p-0">
-            {/* HEADER */}
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-5">
-                <button onClick={() => navigate(`/asdos/kelas/${id_praktikum}`)} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-                    <i className="bi bi-arrow-left me-2"></i>Kembali ke Kelas Hub
-                </button>
-                <div className="d-flex justify-content-between align-items-end flex-wrap gap-3">
-                    <div>
-                        <h3 className="fw-bold text-white mb-2">Manajemen Presensi</h3>
-                        <p className="text-light opacity-75 small mb-0">Catat dan pantau kehadiran mahasiswa di setiap sesi pertemuan.</p>
-                    </div>
-                </div>
-            </motion.div>
+            {/* HEADER BANNER */}
+            <ClassHeaderBanner 
+                id_praktikum={id_praktikum} 
+                activeTab="Manajemen Presensi Mahasiswa" 
+                backUrl={`/asdos/kelas/${id_praktikum}`} 
+                backLabel="Kembali ke Class Hub" 
+            />
 
             {/* SESSION SELECTOR WIDGET */}
             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-card static rounded-4 p-4 mb-4">

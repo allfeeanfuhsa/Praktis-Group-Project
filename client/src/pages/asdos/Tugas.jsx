@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const Tugas = () => {
   const { id_praktikum } = useParams();
@@ -143,18 +144,13 @@ const Tugas = () => {
 
   return (
     <div className="container-fluid p-0">
-      {/* HEADER */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-5">
-        <button onClick={() => navigate(`/asdos/kelas/${id_praktikum}`)} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-          <i className="bi bi-arrow-left me-2"></i>Kembali ke Kelas Hub
-        </button>
-        <div className="d-flex justify-content-between align-items-end flex-wrap gap-3">
-          <div>
-            <h3 className="fw-bold text-white mb-2">Daftar Tugas</h3>
-            <p className="text-light opacity-75 small mb-0">Total {taskList.length} tugas terdaftar</p>
-          </div>
-        </div>
-      </motion.div>
+      {/* HEADER BANNER */}
+      <ClassHeaderBanner 
+        id_praktikum={id_praktikum} 
+        activeTab="Tugas & Penilaian" 
+        backUrl={`/asdos/kelas/${id_praktikum}`} 
+        backLabel="Kembali ke Class Hub" 
+      />
 
       {/* LIST TUGAS */}
       {taskList.length === 0 ? (

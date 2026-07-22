@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const SessionDetailMhs = () => {
   const { id_praktikum, id_session } = useParams();
@@ -99,18 +100,13 @@ const SessionDetailMhs = () => {
   return (
     <div className="container-fluid px-0">
       
-      {/* HEADER / NAV */}
-      <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="mb-4">
-        <button onClick={() => navigate(`/mahasiswa/kelas/${id_praktikum}/jadwal`)} className="btn btn-light shadow-sm mb-4 fw-bold rounded-pill px-4">
-          <i className="bi bi-arrow-left me-2"></i>Kembali ke Jadwal
-        </button>
-        <div className="d-flex align-items-center gap-3 flex-wrap">
-          <span className="badge border border-light text-light px-3 py-2 rounded-pill" style={{ fontSize: '0.9rem', background: 'rgba(255,255,255,0.1)' }}>
-            Sesi {session.sesi_ke}
-          </span>
-          <h3 className="fw-bold text-white mb-0">Detail Pertemuan Praktikum</h3>
-        </div>
-      </motion.div>
+      {/* HEADER BANNER */}
+      <ClassHeaderBanner 
+        id_praktikum={id_praktikum} 
+        activeTab={`Detail Sesi ${session?.sesi_ke || ''}`} 
+        backUrl={`/mahasiswa/kelas/${id_praktikum}/jadwal`} 
+        backLabel="Kembali ke Jadwal Sesi" 
+      />
 
       {/* TOP SESSION INFO CARD */}
       <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="glass-card static rounded-4 p-4 mb-4">

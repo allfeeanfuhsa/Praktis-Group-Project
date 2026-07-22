@@ -18,6 +18,17 @@ const Timeline = () => {
     const [hasMaterialsOnly, setHasMaterialsOnly] = useState(false);
     const [hasTasksOnly, setHasTasksOnly] = useState(false);
 
+    // Collapsed Date Nodes State (Feature: Click dot marker to hide/show nodes)
+    const [collapsedDates, setCollapsedDates] = useState({});
+    const [allCollapsed, setAllCollapsed] = useState(false);
+
+    const toggleDateCollapse = (dateKey) => {
+        setCollapsedDates(prev => ({
+            ...prev,
+            [dateKey]: !prev[dateKey]
+        }));
+    };
+
     // Modal preview state
     const [selectedSession, setSelectedSession] = useState(null);
     const [showModal, setShowModal] = useState(false);
@@ -311,6 +322,36 @@ const Timeline = () => {
                             <span>Ada Tugas</span>
                         </button>
 
+                        {/* TOGGLE: CIUTKAN / TAMPILKAN SEMUA NODES */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (allCollapsed) {
+                                    setCollapsedDates({});
+                                    setAllCollapsed(false);
+                                } else {
+                                    const map = {};
+                                    allDays.forEach(d => {
+                                        if (d.sessions && d.sessions.length > 0) {
+                                            map[d.dateStr] = true;
+                                        }
+                                    });
+                                    setCollapsedDates(map);
+                                    setAllCollapsed(true);
+                                }
+                            }}
+                            className={`btn btn-sm rounded-pill px-3 py-1.5 fw-bold d-inline-flex align-items-center gap-1.5 transition-all ${
+                                allCollapsed 
+                                    ? (isAdmin ? 'btn-primary text-white shadow-sm' : 'btn-primary text-white shadow') 
+                                    : (isAdmin ? 'btn-outline-secondary border-opacity-50' : 'btn-outline-light border-opacity-25 opacity-75')
+                            }`}
+                            style={{ fontSize: '0.78rem' }}
+                            title="Ciutkan atau tampilkan seluruh kartu sesi pada timeline"
+                        >
+                            <i className={allCollapsed ? "bi bi-eye" : "bi bi-eye-slash"}></i>
+                            <span>{allCollapsed ? "Tampilkan Sesi" : "Ciutkan Sesi"}</span>
+                        </button>
+
                         {/* RESET BUTTON */}
                         {isFilterActive && (
                             <button
@@ -393,6 +434,7 @@ const Timeline = () => {
                                     {displayDays.map((dayItem) => {
                                         const hasSessions = dayItem.sessions.length > 0;
                                         const sessionCount = dayItem.sessions.length;
+                                        const isCollapsed = Boolean(collapsedDates[dayItem.dateKey || dayItem.dateStr]);
 
                                         return (
                                             <div 
@@ -405,7 +447,7 @@ const Timeline = () => {
                                                 <div className="position-relative d-flex justify-content-center align-items-end mb-1" style={{ height: '90px', width: '100%', pointerEvents: 'none' }}>
                                                     
                                                     {/* SVG DIAGONAL BRANCH LINES FOR SESSIONS */}
-                                                    {(hasSessions || (dayItem.isToday && !hasSessions)) && (
+                                                    {(hasSessions || (dayItem.isToday && !hasSessions)) && !isCollapsed && (
                                                         <svg className="position-absolute top-0 start-0 w-100 h-100" style={{ pointerEvents: 'none', zIndex: 1, overflow: 'visible' }}>
                                                             {hasSessions ? dayItem.sessions.map((s, idx) => {
                                                                 const xOffset = sessionCount > 1 ? (idx - (sessionCount - 1) / 2) * 50 : 0;
@@ -455,91 +497,113 @@ const Timeline = () => {
                                                     )}
 
                                                     {/* BALLOON NODES POSITIONED AT DIAGONAL BRANCH ENDPOINTS */}
-                                                    <div className="position-relative w-100 h-100 d-flex justify-content-center align-items-center" style={{ zIndex: 2, pointerEvents: 'none' }}>
-                                                        {dayItem.sessions.map((s, sIdx) => {
-                                                            const xOffset = sessionCount > 1 ? (sIdx - (sessionCount - 1) / 2) * 50 : 0;
-                                                            
-                                                            // Theme styling calculations
-                                                            let bgStyle = dayItem.isPast 
-                                                                ? 'rgba(255,255,255,0.1)' 
-                                                                : 'linear-gradient(135deg, rgba(13,110,253,0.75), rgba(13,202,240,0.75))';
-                                                            let borderStyle = dayItem.isPast 
-                                                                ? '2px solid rgba(255,255,255,0.25)' 
-                                                                : '2px solid rgba(13,202,240,0.9)';
-                                                            let shadowStyle = dayItem.isPast ? 'none' : '0 4px 15px rgba(13,202,240,0.45)';
-                                                            let badgeBg = 'bg-dark bg-opacity-75 text-white border border-light border-opacity-25';
+                                                    {!isCollapsed && (
+                                                        <div className="position-relative w-100 h-100 d-flex justify-content-center align-items-center" style={{ zIndex: 2, pointerEvents: 'none' }}>
+                                                            {dayItem.sessions.map((s, sIdx) => {
+                                                                const xOffset = sessionCount > 1 ? (sIdx - (sessionCount - 1) / 2) * 50 : 0;
+                                                                
+                                                                // Theme styling calculations
+                                                                let bgStyle = dayItem.isPast 
+                                                                    ? 'rgba(255,255,255,0.1)' 
+                                                                    : 'linear-gradient(135deg, rgba(13,110,253,0.75), rgba(13,202,240,0.75))';
+                                                                let borderStyle = dayItem.isPast 
+                                                                    ? '2px solid rgba(255,255,255,0.25)' 
+                                                                    : '2px solid rgba(13,202,240,0.9)';
+                                                                let shadowStyle = dayItem.isPast ? 'none' : '0 4px 15px rgba(13,202,240,0.45)';
+                                                                let badgeBg = 'bg-dark bg-opacity-75 text-white border border-light border-opacity-25';
 
-                                                            if (isAdmin) {
-                                                                bgStyle = dayItem.isPast 
-                                                                    ? '#f1f5f9' 
-                                                                    : 'linear-gradient(135deg, #0d6efd, #0b5ed7)';
-                                                                borderStyle = dayItem.isPast 
-                                                                    ? '2px solid #cbd5e1' 
-                                                                    : '2px solid #0d6efd';
-                                                                shadowStyle = dayItem.isPast ? 'none' : '0 4px 15px rgba(13,110,253,0.3)';
-                                                                badgeBg = dayItem.isPast 
-                                                                    ? 'bg-secondary bg-opacity-25 text-dark' 
-                                                                    : 'bg-white text-primary shadow-sm';
-                                                            }
+                                                                if (isAdmin) {
+                                                                    bgStyle = dayItem.isPast 
+                                                                        ? '#f1f5f9' 
+                                                                        : 'linear-gradient(135deg, #0d6efd, #0b5ed7)';
+                                                                    borderStyle = dayItem.isPast 
+                                                                        ? '2px solid #cbd5e1' 
+                                                                        : '2px solid #0d6efd';
+                                                                    shadowStyle = dayItem.isPast ? 'none' : '0 4px 15px rgba(13,110,253,0.3)';
+                                                                    badgeBg = dayItem.isPast 
+                                                                        ? 'bg-secondary bg-opacity-25 text-dark' 
+                                                                        : 'bg-white text-primary shadow-sm';
+                                                                }
 
-                                                            return (
-                                                                <motion.div
-                                                                    key={s._id || sIdx}
-                                                                    whileHover={{ scale: 1.15 }}
-                                                                    onClick={() => { setSelectedSession(s); setShowModal(true); }}
-                                                                    className={`rounded-circle d-flex flex-column align-items-center justify-content-center transition-all position-absolute ${dayItem.isPast ? (isAdmin ? 'text-secondary opacity-75' : 'text-white opacity-50 grayscale-hover') : 'text-white'}`}
-                                                                    style={{
-                                                                        width: '64px',
-                                                                        height: '64px',
-                                                                        top: '2px',
-                                                                        left: `calc(50% + ${xOffset}px - 32px)`,
-                                                                        cursor: 'pointer',
-                                                                        background: bgStyle,
-                                                                        border: borderStyle,
-                                                                        boxShadow: shadowStyle,
-                                                                        backdropFilter: isAdmin ? 'none' : 'blur(16px)',
-                                                                        WebkitBackdropFilter: isAdmin ? 'none' : 'blur(16px)',
-                                                                        pointerEvents: 'auto',
-                                                                        borderRadius: '50%'
-                                                                    }}
-                                                                >
-                                                                    {/* Kode Kelas */}
-                                                                    <span className="fw-bold text-truncate px-1 d-block mb-1" style={{ fontSize: '0.66rem', maxWidth: '56px', lineHeight: 1 }}>
-                                                                        {s.kode_kelas}
-                                                                    </span>
-
-                                                                    {/* Sesi Ke Badge */}
-                                                                    <span
-                                                                        className={`badge rounded-pill fw-bold px-1.5 py-0.5 ${badgeBg}`}
-                                                                        style={{ fontSize: '0.6rem', lineHeight: 1 }}
+                                                                return (
+                                                                    <motion.div
+                                                                        key={s._id || sIdx}
+                                                                        whileHover={{ scale: 1.15 }}
+                                                                        onClick={() => { setSelectedSession(s); setShowModal(true); }}
+                                                                        className={`rounded-circle d-flex flex-column align-items-center justify-content-center transition-all position-absolute ${dayItem.isPast ? (isAdmin ? 'text-secondary opacity-75' : 'text-white opacity-50 grayscale-hover') : 'text-white'}`}
+                                                                        style={{
+                                                                            width: '64px',
+                                                                            height: '64px',
+                                                                            top: '2px',
+                                                                            left: `calc(50% + ${xOffset}px - 32px)`,
+                                                                            cursor: 'pointer',
+                                                                            background: bgStyle,
+                                                                            border: borderStyle,
+                                                                            boxShadow: shadowStyle,
+                                                                            backdropFilter: isAdmin ? 'none' : 'blur(16px)',
+                                                                            WebkitBackdropFilter: isAdmin ? 'none' : 'blur(16px)',
+                                                                            pointerEvents: 'auto',
+                                                                            borderRadius: '50%'
+                                                                        }}
                                                                     >
-                                                                        Sesi {s.sesi_ke}
-                                                                    </span>
-                                                                </motion.div>
-                                                            );
-                                                        })}
-                                                    </div>
+                                                                        {/* Kode Kelas */}
+                                                                        <span className="fw-bold text-truncate px-1 d-block mb-1" style={{ fontSize: '0.66rem', maxWidth: '56px', lineHeight: 1 }}>
+                                                                            {s.kode_kelas}
+                                                                        </span>
+
+                                                                        {/* Sesi Ke Badge */}
+                                                                        <span
+                                                                            className={`badge rounded-pill fw-bold px-1.5 py-0.5 ${badgeBg}`}
+                                                                            style={{ fontSize: '0.6rem', lineHeight: 1 }}
+                                                                        >
+                                                                            Sesi {s.sesi_ke}
+                                                                        </span>
+                                                                    </motion.div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
 
                                                 </div>
 
                                                 {/* DAY TICK DOT MARKER ON THE LINE */}
-                                                <div 
-                                                    className={`rounded-circle shadow-sm transition-all ${
+                                                <motion.div 
+                                                    whileHover={hasSessions ? { scale: 1.4 } : {}}
+                                                    onClick={() => hasSessions && toggleDateCollapse(dayItem.dateStr)}
+                                                    className={`rounded-circle shadow-sm transition-all position-relative ${
                                                         dayItem.isToday 
                                                             ? 'bg-danger animate-pulse border border-2 border-white' 
                                                             : hasSessions 
-                                                            ? (isAdmin ? 'bg-primary border border-2 border-white' : 'bg-info border border-2 border-white') 
+                                                            ? (isCollapsed 
+                                                                ? 'bg-warning text-dark border border-2 border-white'
+                                                                : (isAdmin ? 'bg-primary border border-2 border-white' : 'bg-info border border-2 border-white')) 
                                                             : dayItem.isPast 
                                                             ? (isAdmin ? 'bg-secondary bg-opacity-25' : 'bg-secondary bg-opacity-40') 
                                                             : (isAdmin ? 'bg-secondary bg-opacity-50' : 'bg-light bg-opacity-50')
                                                     }`} 
                                                     style={{ 
-                                                        width: hasSessions || dayItem.isToday ? '14px' : '8px', 
-                                                        height: hasSessions || dayItem.isToday ? '14px' : '8px', 
-                                                        zIndex: 3 
+                                                        width: hasSessions || dayItem.isToday ? '16px' : '8px', 
+                                                        height: hasSessions || dayItem.isToday ? '16px' : '8px', 
+                                                        zIndex: 3,
+                                                        cursor: hasSessions ? 'pointer' : 'default'
                                                     }}
-                                                    title={formatFullDate(dayItem.dateObj)}
-                                                ></div>
+                                                    title={hasSessions 
+                                                        ? (isCollapsed 
+                                                            ? `Klik untuk melihat ${sessionCount} sesi (${formatFullDate(dayItem.dateObj)})` 
+                                                            : `Klik untuk menciutkan ${sessionCount} sesi (${formatFullDate(dayItem.dateObj)})`)
+                                                        : formatFullDate(dayItem.dateObj)
+                                                    }
+                                                >
+                                                    {/* If collapsed and has sessions, show badge counter */}
+                                                    {hasSessions && isCollapsed && (
+                                                        <span 
+                                                            className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark border border-white fw-bold shadow-sm"
+                                                            style={{ fontSize: '0.55rem', padding: '0.15em 0.35em' }}
+                                                        >
+                                                            {sessionCount}
+                                                        </span>
+                                                    )}
+                                                </motion.div>
 
                                                 {/* DATE NUMBER / LABEL BELOW LINE */}
                                                 <div 
@@ -680,10 +744,29 @@ const Timeline = () => {
 
                             {/* Modal Footer */}
                             <div className={isAdmin ? "p-4 border-top text-end d-flex justify-content-between align-items-center bg-light" : "p-4 border-top border-light border-opacity-10 d-flex justify-content-between align-items-center"}>
-                                <button type="button" className={isAdmin ? "btn btn-outline-secondary rounded-pill px-4 fw-bold ms-auto" : "btn btn-outline-light rounded-pill px-4 fw-bold"} onClick={() => setShowModal(false)}>
+                                <button type="button" className={isAdmin ? "btn btn-outline-secondary rounded-pill px-4 fw-bold" : "btn btn-outline-light rounded-pill px-4 fw-bold"} onClick={() => setShowModal(false)}>
                                     Tutup
                                 </button>
-                                {!isAdmin && (
+
+                                {isAdmin ? (
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-primary shadow-sm rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center gap-2"
+                                        onClick={() => {
+                                            setShowModal(false);
+                                            navigate('/admin/praktikum', { 
+                                                state: { 
+                                                    openSessionClassId: selectedSession.id_praktikum,
+                                                    targetSessionId: selectedSession.id_pertemuan 
+                                                } 
+                                            });
+                                        }}
+                                    >
+                                        <i className="bi bi-calendar-week me-1"></i>
+                                        <span>Kelola Sesi Kelas</span>
+                                        <i className="bi bi-arrow-right"></i>
+                                    </button>
+                                ) : (
                                     <button 
                                         type="button" 
                                         className="btn btn-primary shadow-sm rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center gap-2"

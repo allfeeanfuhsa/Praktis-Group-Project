@@ -55,6 +55,7 @@ const globalLimiter = rateLimit({
 });
 
 const { ipBanMiddleware } = require('./middleware/ipBanMiddleware');
+const { apiLoggerMiddleware } = require('./middleware/apiLoggerMiddleware');
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -62,6 +63,7 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser()); // Parse cookies for HttpOnly JWT (2.1)
 app.use('/api', ipBanMiddleware); // Enforce IP ban checks on all API endpoints
+app.use('/api', apiLoggerMiddleware); // Log API requests & bandwidth metrics
 app.use('/api', globalLimiter); // Apply global rate limit to all /api/* routes
 
 // Test Route
