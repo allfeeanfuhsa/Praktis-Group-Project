@@ -40,9 +40,12 @@ const createUploader = (subfolder) => {
       cb(null, uploadDir);
     },
     filename: (req, file, cb) => {
-      // Filename: userID-timestamp-random.ext
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, req.user.id + '-' + uniqueSuffix + path.extname(file.originalname));
+      // Filename: userID-timestamp-sanitizedOriginalName.ext
+      const nameWithoutExt = path.parse(file.originalname).name;
+      const ext = path.extname(file.originalname);
+      const cleanName = nameWithoutExt.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50);
+      const uniquePrefix = `${req.user?.id || 'anon'}-${Date.now()}`;
+      cb(null, `${uniquePrefix}-${cleanName}${ext}`);
     }
   });
 
