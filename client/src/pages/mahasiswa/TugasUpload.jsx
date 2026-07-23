@@ -81,6 +81,25 @@ const TugasUpload = () => {
         }
     };
 
+    const handleDeleteSubmission = async () => {
+        if (!submission) return;
+        if (!window.confirm("Apakah Anda yakin ingin membatalkan pengumpulan dan menghapus berkas tugas ini?")) return;
+
+        try {
+            setUploading(true);
+            const targetId = submission._id || id_tugas;
+            await api.delete(`/api/submission/${targetId}`);
+            alert('Pengumpulan berhasil dibatalkan dan berkas dihapus dari sistem.');
+            setSubmission(null);
+            setSelectedFile(null);
+            fetchData();
+        } catch (err) {
+            setMessage({ type: 'danger', text: err.response?.data?.message || 'Gagal menghapus berkas.' });
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleString('id-ID', {
             weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -166,7 +185,7 @@ const TugasUpload = () => {
                                         >
                                             <div className="d-flex align-items-center gap-2">
                                                 <i className="bi bi-file-earmark-text fs-4 text-info"></i>
-                                                <span className="fw-bold">{file.filename}</span>
+                                                <span className="fw-bold">{file.filename ? file.filename.replace(/^\d+-\d+-(?:\d+-)?/, '') : 'Berkas'}</span>
                                             </div>
                                             <span className="badge bg-light bg-opacity-25 text-white rounded-pill px-3 py-1.5">
                                                 Buka Soal <i className="bi bi-box-arrow-up-right ms-1"></i>
@@ -266,9 +285,22 @@ const TugasUpload = () => {
                                             className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-flex align-items-center gap-2 hover-opacity-100 w-100 justify-content-center"
                                         >
                                             <i className="bi bi-file-earmark-check text-success fs-5"></i>
-                                            <span className="text-truncate">{submission.file.filename || 'Tugas_Saya.pdf'}</span>
+                                            <span className="text-truncate">{submission.file.filename ? submission.file.filename.replace(/^\d+-\d+-(?:\d+-)?/, '') : 'Tugas_Saya.pdf'}</span>
                                             <i className="bi bi-box-arrow-up-right small"></i>
                                         </a>
+                                    )}
+
+                                    {/* Unsubmit / Delete File Button */}
+                                    {!isClosed && (
+                                        <button
+                                            type="button"
+                                            onClick={handleDeleteSubmission}
+                                            disabled={uploading}
+                                            className="btn btn-outline-danger btn-sm rounded-pill w-100 mt-2 py-1.5 fw-bold"
+                                            style={{ fontSize: '0.78rem' }}
+                                        >
+                                            <i className="bi bi-trash3 me-1"></i> Batal Kumpul & Hapus Berkas
+                                        </button>
                                     )}
                                 </div>
 

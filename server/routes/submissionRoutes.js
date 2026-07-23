@@ -11,6 +11,7 @@ const validateMimeType = require('../middleware/validateMimeType'); // 2.7
 
 // Setup specific uploader for Submissions
 const uploadSubmission = createUploader('submissions');
+const uploadRateLimiter = require('../middleware/uploadRateLimiter');
 
 // GLOBAL PROTECTION
 router.use(verifyToken);
@@ -26,6 +27,7 @@ router.use(verifyToken);
  * @body    form-data: { tugas_id: "...", file: [PDF/Doc] }
  */
 router.post('/',
+  uploadRateLimiter,                // Anti-Abuse: Max 10 uploads / 15 mins
   uploadSubmission.single('file'),
   validateMimeType,                 // 2.7: Magic bytes check after upload
   submissionController.submitWork
@@ -67,5 +69,8 @@ router.get('/download/:submissionId', verifyToken, submissionController.download
 
 // Security fix: Comment endpoint now requires authentication
 router.post('/:submissionId/comment', verifyToken, submissionController.addComment);
+
+// DELETE / Unsubmit work (Student owner, Asdos, or Admin)
+router.delete('/:submissionId', verifyToken, submissionController.deleteSubmission);
 
 module.exports = router;

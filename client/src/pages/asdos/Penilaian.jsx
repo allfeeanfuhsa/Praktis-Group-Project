@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import { motion } from 'framer-motion';
 import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
@@ -20,6 +21,17 @@ const PenilaianAsdos = () => {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [commentText, setCommentText] = useState("");
+
+  const handleDeleteSubmissionFile = async (submissionId) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus berkas pengumpulan tugas mahasiswa ini dari sistem?")) return;
+    try {
+      await api.delete(`/api/submission/${submissionId}`);
+      alert("Berkas pengumpulan berhasil dihapus.");
+      window.location.reload();
+    } catch (err) {
+      alert(err.response?.data?.message || "Gagal menghapus berkas pengumpulan.");
+    }
+  };
 
   // 1. Fetch Submissions
   useEffect(() => {
@@ -314,18 +326,29 @@ const PenilaianAsdos = () => {
                         </small>
                       </td>
 
-                      {/* File Link */}
+                      {/* File Link & Delete */}
                       <td className="bg-transparent">
                         {sub.file ? (
-                          <button
-                            type="button"
-                            onClick={() => handleViewFile(`/api/submission/${sub._id}/download?view=true`)}
-                            className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none hover-opacity-100 d-inline-flex align-items-center"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-                          >
-                            <i className="bi bi-file-earmark-text me-2"></i>
-                            {sub.file.filename || 'Buka Berkas'}
-                          </button>
+                          <div className="d-flex align-items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleViewFile(`/api/submission/${sub._id}/download?view=true`)}
+                              className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none hover-opacity-100 d-inline-flex align-items-center"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                              <i className="bi bi-file-earmark-text me-2"></i>
+                              {getCleanFilename(sub.file.filename) || 'Buka Berkas'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger btn-sm rounded-circle p-1 d-inline-flex align-items-center justify-content-center"
+                              style={{ width: '28px', height: '28px' }}
+                              title="Hapus Berkas Pengumpulan"
+                              onClick={() => handleDeleteSubmissionFile(sub._id)}
+                            >
+                              <i className="bi bi-trash3" style={{ fontSize: '0.75rem' }}></i>
+                            </button>
+                          </div>
                         ) : (
                           <span className="badge bg-secondary bg-opacity-25 text-light opacity-50 rounded-pill">Tanpa Berkas</span>
                         )}

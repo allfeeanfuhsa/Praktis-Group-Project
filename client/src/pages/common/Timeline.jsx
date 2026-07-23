@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
 import { useAuth } from '../../context/authContext';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import { motion } from 'framer-motion';
 
 const Timeline = () => {
@@ -709,7 +710,7 @@ const Timeline = () => {
                                                                 className={isAdmin ? "badge bg-white text-primary border border-primary border-opacity-25 px-2.5 py-1.5 rounded-pill text-decoration-none d-inline-flex align-items-center gap-1.5 shadow-sm" : "badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-2.5 py-1.5 rounded-pill text-decoration-none d-inline-flex align-items-center gap-1.5"}
                                                             >
                                                                 <i className="bi bi-file-earmark-text text-primary"></i>
-                                                                <span>{file.filename}</span>
+                                                                <span>{getCleanFilename(file.filename)}</span>
                                                                 <i className="bi bi-box-arrow-up-right small ms-1"></i>
                                                             </a>
                                                         ))}

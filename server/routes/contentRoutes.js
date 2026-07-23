@@ -13,6 +13,7 @@ const validateMimeType = require('../middleware/validateMimeType'); // 2.7
 // Uploaders
 const uploadMaterial = createUploader('materials');
 const uploadTask = createUploader('tasks'); 
+const uploadRateLimiter = require('../middleware/uploadRateLimiter');
 
 router.use(verifyToken);
 
@@ -54,6 +55,7 @@ router.delete('/session/:id',
 // Upload Material
 router.post('/materi',
   checkRole(['asdos', 'admin']),
+  uploadRateLimiter,             // Anti-Abuse: Max 10 uploads / 15 mins
   uploadMaterial.array('files', 5),
   validateMimeType,              // 2.7: Validate real MIME via magic bytes
   contentController.createMaterial
@@ -62,6 +64,7 @@ router.post('/materi',
 // Create Task
 router.post('/tugas', 
   checkRole(['asdos', 'admin']),
+  uploadRateLimiter,             // Anti-Abuse: Max 10 uploads / 15 mins
   uploadTask.array('files', 5),
   validateMimeType,              // 2.7: Validate real MIME via magic bytes
   contentController.createTask

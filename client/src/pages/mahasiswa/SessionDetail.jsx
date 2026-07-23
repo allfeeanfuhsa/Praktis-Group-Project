@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import api from '../../utils/api';
 import { motion } from 'framer-motion';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const SessionDetailMhs = () => {
@@ -161,7 +162,7 @@ const SessionDetailMhs = () => {
                                      className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-flex align-items-center gap-2 hover-opacity-100"
                                    >
                                       <i className={`bi ${getFileIcon(file.mimetype)}`}></i>
-                                      <span>{file.filename}</span>
+                                      <span>{getCleanFilename(file.filename)}</span>
                                       <i className="bi bi-box-arrow-up-right small"></i>
                                    </a>
                                ))}
@@ -267,7 +268,7 @@ const SessionDetailMhs = () => {
                         >
                           <div className="d-flex align-items-center gap-2">
                             <i className={`bi ${getFileIcon(file.mimetype)} fs-4`}></i>
-                            <span className="fw-bold">{file.filename}</span>
+                            <span className="fw-bold">{getCleanFilename(file.filename)}</span>
                           </div>
                           <span className="badge bg-light bg-opacity-25 text-white rounded-pill px-3 py-1.5">
                             Buka File <i className="bi bi-box-arrow-up-right ms-1"></i>

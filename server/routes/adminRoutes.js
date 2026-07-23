@@ -86,19 +86,24 @@ router.get('/stats', verifyToken, checkRole(['admin']), async (req, res) => {
         }
     });
 
-    // 5. Session Dates (for calendar)
+    // 5. Session Dates (for calendar & conflict detection)
     const sessions = await Pertemuan.findAll({
-      attributes: ['tanggal', 'sesi_ke'],
+      attributes: ['id_pertemuan', 'tanggal', 'sesi_ke', 'waktu_mulai', 'waktu_selesai', 'ruangan'],
       include: [{
           model: Praktikum,
-          attributes: ['kode_kelas', 'mata_kuliah']
+          attributes: ['id_praktikum', 'kode_kelas', 'mata_kuliah', 'ruangan']
       }]
     });
     const sessionDates = sessions.map(s => ({
+        id_pertemuan: s.id_pertemuan,
         tanggal: s.tanggal,
         sesi_ke: s.sesi_ke,
+        waktu_mulai: s.waktu_mulai || '08:00',
+        waktu_selesai: s.waktu_selesai || '10:00',
+        ruangan: s.ruangan || s.Praktikum?.ruangan || 'Lab B',
         mata_kuliah: s.Praktikum?.mata_kuliah,
-        kode_kelas: s.Praktikum?.kode_kelas
+        kode_kelas: s.Praktikum?.kode_kelas,
+        id_praktikum: s.Praktikum?.id_praktikum
     }));
 
     res.json({
@@ -367,20 +372,38 @@ router.get('/files', verifyToken, checkRole(['admin']), async (req, res) => {
   }
 });
 
-// 3. Delete File (Admin Purge Action)
+// 3. Delete File (Admin, Asdos, & Student Self-Purge Action)
 const deleteFileHandler = async (req, res) => {
   try {
     const { category, id, fileIndex } = req.params;
     const idx = parseInt(fileIndex || 0);
+    const userId = req.user.id;
+
+    // Robust Role Detection: checks JWT roles array & SQL PraktikumUserRole
+    const rawRoles = req.user.roles || (req.user.role ? [req.user.role] : []);
+    const rolesList = Array.isArray(rawRoles) ? rawRoles.map(r => String(r).toLowerCase()) : [String(rawRoles).toLowerCase()];
+    
+    let isStaff = rolesList.some(r => r === 'asdos' || r === 'admin');
+    if (!isStaff) {
+      const { PraktikumUserRole, Role } = require('../models/sql');
+      const staffEnrollment = await PraktikumUserRole.findOne({
+        where: { id_user: userId },
+        include: [{ model: Role, where: { deskripsi: ['asdos', 'admin'] } }]
+      });
+      if (staffEnrollment) isStaff = true;
+    }
 
     if (category === 'materi') {
+      if (!isStaff) {
+        return res.status(403).json({ message: 'Hanya Asdos & Admin yang dapat menghapus materi.' });
+      }
       const materi = await Materi.findById(id);
-      if (!materi) return res.status(404).json({ message: 'Materi not found' });
+      if (!materi) return res.status(404).json({ message: 'Materi tidak ditemukan' });
 
       if (materi.attachments && materi.attachments[idx]) {
         const filePath = path.join(__dirname, '..', materi.attachments[idx].path);
         if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+          try { fs.unlinkSync(filePath); } catch (e) {}
         }
         materi.attachments.splice(idx, 1);
         if (materi.attachments.length === 0) {
@@ -390,25 +413,34 @@ const deleteFileHandler = async (req, res) => {
         }
       }
     } else if (category === 'tugas') {
+      if (!isStaff) {
+        return res.status(403).json({ message: 'Hanya Asdos & Admin yang dapat menghapus tugas.' });
+      }
       const tugas = await Tugas.findById(id);
-      if (!tugas) return res.status(404).json({ message: 'Tugas not found' });
+      if (!tugas) return res.status(404).json({ message: 'Tugas tidak ditemukan' });
 
       if (tugas.attachments && tugas.attachments[idx]) {
         const filePath = path.join(__dirname, '..', tugas.attachments[idx].path);
         if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+          try { fs.unlinkSync(filePath); } catch (e) {}
         }
         tugas.attachments.splice(idx, 1);
         await tugas.save();
       }
     } else if (category === 'pengumpulan') {
       const submission = await Pengumpulan.findById(id);
-      if (!submission) return res.status(404).json({ message: 'Submission not found' });
+      if (!submission) return res.status(404).json({ message: 'Pengumpulan tidak ditemukan' });
+
+      const isOwner = submission.student_id?.toString() === userId.toString();
+
+      if (!isOwner && !isStaff) {
+        return res.status(403).json({ message: 'Anda tidak memiliki hak akses untuk menghapus pengumpulan ini.' });
+      }
 
       if (submission.file && submission.file.path) {
         const filePath = path.join(__dirname, '..', submission.file.path);
         if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
+          try { fs.unlinkSync(filePath); } catch (e) {}
         }
       }
       await Pengumpulan.findByIdAndDelete(id);
@@ -424,8 +456,8 @@ const deleteFileHandler = async (req, res) => {
   }
 };
 
-router.delete('/files/:category/:id/:fileIndex', verifyToken, checkRole(['admin']), deleteFileHandler);
-router.delete('/files/:category/:id', verifyToken, checkRole(['admin']), deleteFileHandler);
+router.delete('/files/:category/:id/:fileIndex', verifyToken, checkRole(['admin', 'asdos', 'mahasiswa']), deleteFileHandler);
+router.delete('/files/:category/:id', verifyToken, checkRole(['admin', 'asdos', 'mahasiswa']), deleteFileHandler);
 
 // ==========================================
 // FEATURE 1.6: ACTIVE IP SESSIONS & IP BAN MANAGEMENT

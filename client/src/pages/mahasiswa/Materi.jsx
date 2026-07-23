@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import { motion } from 'framer-motion';
 import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
@@ -256,7 +257,7 @@ const MateriMhs = () => {
                                                 <h5 className="fw-bold text-white mb-1 text-truncate">{item.judul}</h5>
                                                 {attachment && (
                                                     <small className="text-light opacity-75 d-block text-truncate">
-                                                        {attachment.filename}
+                                                        {attachment.filename ? attachment.filename.replace(/^\d+-\d+-(?:\d+-)?/, '') : ''}
                                                     </small>
                                                 )}
                                             </div>
@@ -341,7 +342,7 @@ const MateriMhs = () => {
                                                 >
                                                     <div className="d-flex align-items-center gap-2">
                                                         <i className={`bi ${getFileIcon(file.mimetype)} fs-4`}></i>
-                                                        <span className="fw-bold">{file.filename}</span>
+                                                        <span className="fw-bold">{getCleanFilename(file.filename)}</span>
                                                     </div>
                                                     <span className="badge bg-light bg-opacity-25 text-white rounded-pill px-3 py-1.5">
                                                         Buka File <i className="bi bi-box-arrow-up-right ms-1"></i>

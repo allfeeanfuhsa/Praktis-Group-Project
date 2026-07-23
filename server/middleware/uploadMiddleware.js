@@ -22,9 +22,13 @@ const createUploader = (subfolder) => {
       if (fs.existsSync(dir)) {
         fs.readdirSync(dir).forEach(file => {
           const fp = path.join(dir, file);
-          const stat = fs.statSync(fp);
-          if (stat.isFile()) size += stat.size;
-          else if (stat.isDirectory()) calculateSize(fp);
+          try {
+            const stat = fs.statSync(fp);
+            if (stat.isFile()) size += stat.size;
+            else if (stat.isDirectory()) calculateSize(fp);
+          } catch (e) {
+            // Ignore temporary locks
+          }
         });
       }
     };
@@ -32,10 +36,47 @@ const createUploader = (subfolder) => {
     return size >= maxStorageBytes;
   };
 
+  // Anti-Abuse Guard 1: Per-User Total Quota (Max 100MB per user across all uploads)
+  const checkUserQuota = (userId) => {
+    if (!userId) return false;
+    const maxUserQuotaMB = parseInt(process.env.MAX_USER_QUOTA_MB) || 100;
+    const maxUserQuotaBytes = maxUserQuotaMB * 1024 * 1024;
+    const rootUploads = path.join(__dirname, '../uploads');
+    const userPrefix = `${userId}-`;
+
+    let totalUserSize = 0;
+    const scanUserFiles = (dir) => {
+      if (fs.existsSync(dir)) {
+        fs.readdirSync(dir).forEach(file => {
+          const fp = path.join(dir, file);
+          try {
+            const stat = fs.statSync(fp);
+            if (stat.isFile()) {
+              if (file.startsWith(userPrefix)) {
+                totalUserSize += stat.size;
+              }
+            } else if (stat.isDirectory()) {
+              scanUserFiles(fp);
+            }
+          } catch (e) {
+            // Ignore locks
+          }
+        });
+      }
+    };
+    scanUserFiles(rootUploads);
+    return totalUserSize >= maxUserQuotaBytes;
+  };
+
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
+      // Check Global Storage Cap (5GB)
       if (checkStorageLimit()) {
-        return cb(new Error('Kapasitas penyimpanan sistem telah penuh (Storage Quota Exceeded). Hubungi Administrator.'), null);
+        return cb(new Error('Kapasitas penyimpanan total sistem telah penuh (Global Quota Exceeded 5GB). Hubungi Administrator.'), null);
+      }
+      // Check Per-User Quota (100MB)
+      if (req.user?.id && checkUserQuota(req.user.id)) {
+        return cb(new Error('Batas kuota akun Anda (Max 100 MB) telah penuh. Hapus pengumpulan berkas lama untuk mengunggah berkas baru.'), null);
       }
       cb(null, uploadDir);
     },
@@ -49,31 +90,35 @@ const createUploader = (subfolder) => {
     }
   });
 
-  // 2. Dynamic File Filter (Optional: You can customize this per folder if needed)
+  // Anti-Abuse Guard 2: Double Validation (Extension + MIME Type)
   const fileFilter = (req, file, cb) => {
-    const allowedTypes = [
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png', '.zip', '.rar'];
+    const allowedMimeTypes = [
       'application/pdf', 
       'application/msword', 
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-      'application/vnd.ms-powerpoint', // .ppt
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
       'image/jpeg', 
       'image/png',
-      'application/zip', // .zip
-      'application/x-zip-compressed', // Windows .zip
-      'application/x-rar-compressed' // .rar
+      'application/zip',
+      'application/x-zip-compressed',
+      'application/x-rar-compressed',
+      'application/octet-stream'
     ];
 
-    if (allowedTypes.includes(file.mimetype)) {
+    const ext = path.extname(file.originalname).toLowerCase();
+
+    if (allowedExtensions.includes(ext) && allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF, Docs, PPT, and Images are allowed.'), false);
+      cb(new Error(`Format berkas (${ext}) tidak didukung. Hanya PDF, DOCX, PPTX, JPG, PNG, dan ZIP yang diperbolehkan.`), false);
     }
   };
 
   return multer({ 
     storage: storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // Increased to 10MB for PPTs
+    limits: { fileSize: 10 * 1024 * 1024 }, // Max 10MB per individual file
     fileFilter: fileFilter
   });
 };

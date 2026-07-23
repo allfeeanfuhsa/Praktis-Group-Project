@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import { motion } from 'framer-motion';
 import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
@@ -23,6 +24,19 @@ const SessionDetail = () => {
         setSelectedItem(item);
         setSelectedType(type);
         setShowDetailModal(true);
+    };
+
+    const handleDeleteContentFile = async (e, category, id) => {
+        e.stopPropagation();
+        if (!window.confirm(`Apakah Anda yakin ingin menghapus berkas ${category} ini dari sistem?`)) return;
+        try {
+            await api.delete(`/api/admin/files/${category}/${id}/0`);
+            alert(`Berkas ${category} berhasil dihapus.`);
+            setShowDetailModal(false);
+            window.location.reload();
+        } catch (err) {
+            alert(err.response?.data?.message || `Gagal menghapus berkas ${category}.`);
+        }
     }; // 'materi' or 'tugas'
     const [materiForm, setMateriForm] = useState({ judul: '', deskripsi: '', file: null });
     const [tugasForm, setTugasForm] = useState({ judul: '', deskripsi: '', tenggat_waktu: '', file: null });
@@ -180,14 +194,25 @@ const SessionDetail = () => {
 
                                                         {/* If attachment exists */}
                                                         {m.attachments && m.attachments[0] && (
-                                                            <a
-                                                                href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/materi/${m._id}/download/0?view=true`}
-                                                                target="_blank" rel="noopener noreferrer"
-                                                                className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill mt-2 text-decoration-none d-inline-block hover-opacity-100"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <i className="bi bi-paperclip me-2"></i>{m.attachments[0].filename}
-                                                            </a>
+                                                            <div className="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                                                                <a
+                                                                    href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/materi/${m._id}/download/0?view=true`}
+                                                                    target="_blank" rel="noopener noreferrer"
+                                                                    className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-block hover-opacity-100"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <i className="bi bi-paperclip me-2"></i>{getCleanFilename(m.attachments[0].filename)}
+                                                                </a>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 fw-bold"
+                                                                    title="Hapus Berkas Materi"
+                                                                    onClick={(e) => handleDeleteContentFile(e, 'materi', m._id)}
+                                                                    style={{ fontSize: '0.75rem' }}
+                                                                >
+                                                                    <i className="bi bi-trash3 me-1"></i>Hapus
+                                                                </button>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
@@ -215,14 +240,25 @@ const SessionDetail = () => {
 
                                                             {/* If attachment exists */}
                                                             {t.attachments && t.attachments[0] && (
-                                                                <a
-                                                                    href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/tugas/${t._id}/download/0?view=true`}
-                                                                    target="_blank" rel="noopener noreferrer"
-                                                                    className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-block mb-1 hover-opacity-100"
-                                                                    onClick={(e) => e.stopPropagation()}
-                                                                >
-                                                                    <i className="bi bi-paperclip me-2"></i>{t.attachments[0].filename}
-                                                                </a>
+                                                                <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                                                    <a
+                                                                        href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/tugas/${t._id}/download/0?view=true`}
+                                                                        target="_blank" rel="noopener noreferrer"
+                                                                        className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-block hover-opacity-100"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        <i className="bi bi-paperclip me-2"></i>{getCleanFilename(t.attachments[0].filename)}
+                                                                    </a>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 fw-bold"
+                                                                        title="Hapus Lampiran Tugas"
+                                                                        onClick={(e) => handleDeleteContentFile(e, 'tugas', t._id)}
+                                                                        style={{ fontSize: '0.75rem' }}
+                                                                    >
+                                                                        <i className="bi bi-trash3 me-1"></i>Hapus
+                                                                    </button>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -333,13 +369,22 @@ const SessionDetail = () => {
                                 {selectedItem.attachments && selectedItem.attachments.length > 0 && (
                                     <div className="mb-2">
                                         <h6 className="fw-bold text-info mb-3 text-uppercase tracking-wider small">Lampiran</h6>
-                                        <a
-                                            href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/${selectedType}/${selectedItem._id}/download/0?view=true`}
-                                            target="_blank" rel="noopener noreferrer"
-                                            className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center"
-                                        >
-                                            <i className="bi bi-download me-2 fs-5"></i> Buka {selectedItem.attachments[0].filename}
-                                        </a>
+                                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                                            <a
+                                                href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/${selectedType}/${selectedItem._id}/download/0?view=true`}
+                                                target="_blank" rel="noopener noreferrer"
+                                                className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center"
+                                            >
+                                                <i className="bi bi-download me-2 fs-5"></i> Buka {getCleanFilename(selectedItem.attachments[0].filename)}
+                                            </a>
+                                            <button
+                                                type="button"
+                                                className="btn btn-danger rounded-pill px-3 py-2 fw-bold d-inline-flex align-items-center"
+                                                onClick={(e) => handleDeleteContentFile(e, selectedType, selectedItem._id)}
+                                            >
+                                                <i className="bi bi-trash3 me-1"></i> Hapus Berkas
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

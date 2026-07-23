@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import { motion } from 'framer-motion';
 import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
@@ -19,6 +20,19 @@ const Tugas = () => {
   const handleShowDetail = (item) => {
     setSelectedItem(item);
     setShowDetailModal(true);
+  };
+
+  const handleDeleteTugas = async (e, tugasId) => {
+    e.stopPropagation();
+    if (!window.confirm("Apakah Anda yakin ingin menghapus berkas lampiran tugas ini dari sistem?")) return;
+    try {
+      await api.delete(`/api/admin/files/tugas/${tugasId}/0`);
+      alert("Berkas tugas berhasil dihapus.");
+      setShowDetailModal(false);
+      window.location.reload();
+    } catch (err) {
+      alert(err.response?.data?.message || "Gagal menghapus berkas tugas.");
+    }
   };
 
   useEffect(() => {
@@ -214,7 +228,7 @@ const Tugas = () => {
                         </div>
                         {attachment && (
                           <small className="text-light opacity-75 d-block text-truncate">
-                            {attachment.filename}
+                            {getCleanFilename(attachment.filename)}
                           </small>
                         )}
                       </div>
@@ -224,7 +238,7 @@ const Tugas = () => {
                   <div>
                     {/* Attachment Link */}
                     {attachment && (
-                      <div className="mb-3">
+                      <div className="mb-3 d-flex align-items-center gap-2 flex-wrap">
                         <a
                           href={`${baseURL}/api/content/tugas/${item._id}/download/0?view=true`}
                           target="_blank"
@@ -232,8 +246,17 @@ const Tugas = () => {
                           className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-block hover-opacity-100"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <i className="bi bi-paperclip me-2"></i>{attachment.filename}
+                          <i className="bi bi-paperclip me-2"></i>{getCleanFilename(attachment.filename)}
                         </a>
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 fw-bold"
+                          title="Hapus Lampiran Tugas"
+                          onClick={(e) => handleDeleteTugas(e, item._id)}
+                          style={{ fontSize: '0.75rem' }}
+                        >
+                          <i className="bi bi-trash3 me-1"></i>Hapus
+                        </button>
                       </div>
                     )}
 
@@ -301,13 +324,22 @@ const Tugas = () => {
                 {selectedItem.attachments && selectedItem.attachments.length > 0 && (
                   <div className="mb-2">
                     <h6 className="fw-bold text-info mb-3 text-uppercase tracking-wider small">Lampiran Soal</h6>
-                    <a
-                      href={`${baseURL}/api/content/tugas/${selectedItem._id}/download/0?view=true`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center"
-                    >
-                      <i className="bi bi-eye me-2 fs-5"></i> Buka & View {selectedItem.attachments[0].filename}
-                    </a>
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <a
+                        href={`${baseURL}/api/content/tugas/${selectedItem._id}/download/0?view=true`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center"
+                      >
+                        <i className="bi bi-eye me-2 fs-5"></i> Buka & View {getCleanFilename(selectedItem.attachments[0].filename)}
+                      </a>
+                      <button
+                        type="button"
+                        className="btn btn-danger rounded-pill px-3 py-2 fw-bold d-inline-flex align-items-center"
+                        onClick={(e) => handleDeleteTugas(e, selectedItem._id)}
+                      >
+                        <i className="bi bi-trash3 me-1"></i> Hapus Berkas
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

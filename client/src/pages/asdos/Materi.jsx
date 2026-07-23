@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import { motion } from 'framer-motion';
 import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
@@ -26,6 +27,19 @@ const Materi = () => {
     const handleShowDetail = (item) => {
         setSelectedItem(item);
         setShowDetailModal(true);
+    };
+
+    const handleDeleteMateri = async (e, materiId) => {
+        e.stopPropagation();
+        if (!window.confirm("Apakah Anda yakin ingin menghapus berkas materi ini dari sistem?")) return;
+        try {
+            await api.delete(`/api/admin/files/materi/${materiId}/0`);
+            alert("Materi berhasil dihapus dari sistem.");
+            setShowDetailModal(false);
+            window.location.reload();
+        } catch (err) {
+            alert(err.response?.data?.message || "Gagal menghapus materi.");
+        }
     };
 
     // Fetch Sessions and Materials in a unified loading flow
@@ -297,7 +311,7 @@ const Materi = () => {
                                                 <h5 className="fw-bold text-white mb-1 text-truncate">{item.judul}</h5>
                                                 {attachment && (
                                                     <small className="text-light opacity-75 d-block text-truncate">
-                                                        {attachment.filename}
+                                                        {getCleanFilename(attachment.filename)}
                                                     </small>
                                                 )}
                                             </div>
@@ -306,7 +320,7 @@ const Materi = () => {
 
                                     <div>
                                         {attachment && (
-                                            <div className="mt-3">
+                                            <div className="mt-3 d-flex align-items-center gap-2 flex-wrap">
                                                 <a
                                                     href={`${baseURL}/api/content/materi/${item._id}/download/0?view=true`}
                                                     target="_blank"
@@ -315,8 +329,17 @@ const Materi = () => {
                                                     onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <i className="bi bi-paperclip me-2"></i>
-                                                    {attachment.filename} ({formatFileSize(attachment.size)})
+                                                    {getCleanFilename(attachment.filename)} ({formatFileSize(attachment.size)})
                                                 </a>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 fw-bold"
+                                                    title="Hapus Berkas Materi"
+                                                    onClick={(e) => handleDeleteMateri(e, item._id)}
+                                                    style={{ fontSize: '0.75rem' }}
+                                                >
+                                                    <i className="bi bi-trash3 me-1"></i>Hapus
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -358,13 +381,22 @@ const Materi = () => {
                                 {selectedItem.attachments && selectedItem.attachments.length > 0 && (
                                     <div className="mb-2">
                                         <h6 className="fw-bold text-info mb-3 text-uppercase tracking-wider small">Lampiran Dokumen</h6>
-                                        <a
-                                            href={`${baseURL}/api/content/materi/${selectedItem._id}/download/0?view=true`}
-                                            target="_blank" rel="noopener noreferrer"
-                                            className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center"
-                                        >
-                                            <i className="bi bi-eye me-2 fs-5"></i> Buka & View {selectedItem.attachments[0].filename} ({formatFileSize(selectedItem.attachments[0].size)})
-                                        </a>
+                                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                                            <a
+                                                href={`${baseURL}/api/content/materi/${selectedItem._id}/download/0?view=true`}
+                                                target="_blank" rel="noopener noreferrer"
+                                                className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center"
+                                            >
+                                                <i className="bi bi-eye me-2 fs-5"></i> Buka & View {getCleanFilename(selectedItem.attachments[0].filename)} ({formatFileSize(selectedItem.attachments[0].size)})
+                                            </a>
+                                            <button
+                                                type="button"
+                                                className="btn btn-danger rounded-pill px-3 py-2 fw-bold d-inline-flex align-items-center"
+                                                onClick={(e) => handleDeleteMateri(e, selectedItem._id)}
+                                            >
+                                                <i className="bi bi-trash3 me-1"></i> Hapus Berkas
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
 import { motion } from 'framer-motion';
 
 const ManajemenBerkas = () => {
@@ -303,8 +304,8 @@ const ManajemenBerkas = () => {
                       <div className="d-flex align-items-center">
                         {getFileIcon(file.filename, file.mimetype)}
                         <div>
-                          <div className="fw-bold text-dark text-truncate" style={{ maxWidth: '240px' }} title={file.filename}>
-                            {file.filename}
+                          <div className="fw-bold text-dark text-truncate" style={{ maxWidth: '240px' }} title={getCleanFilename(file.filename)}>
+                            {getCleanFilename(file.filename)}
                           </div>
                           <small className="text-muted d-block text-truncate" style={{ maxWidth: '240px', fontSize: '0.75rem' }}>
                             {file.title}
@@ -406,7 +407,7 @@ const ManajemenBerkas = () => {
               <div className="modal-body py-3">
                 <p className="mb-2">Apakah Anda yakin ingin menghapus berkas berikut dari sistem?</p>
                 <div className="card p-3 bg-light border-0 rounded-3 mb-2">
-                  <div className="fw-bold text-dark text-break">{selectedFileForDelete.filename}</div>
+                  <div className="fw-bold text-dark text-break">{getCleanFilename(selectedFileForDelete.filename)}</div>
                   <small className="text-muted">
                     Kategori: <strong className="text-uppercase">{selectedFileForDelete.category}</strong> • Ukuran: {formatFileSize(selectedFileForDelete.size)}
                   </small>

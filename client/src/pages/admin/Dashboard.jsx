@@ -65,6 +65,24 @@ const Dashboard = () => {
     }
   };
 
+  // Conflict detector: checks if two sessions overlap in time AND share the same room
+  const checkSessionConflict = (currentSession, allSessions) => {
+    if (!currentSession || !allSessions || allSessions.length <= 1) return false;
+    return allSessions.some(other => {
+      if (other === currentSession) return false;
+      const roomA = (currentSession.ruangan || 'Lab B').trim().toLowerCase();
+      const roomB = (other.ruangan || 'Lab B').trim().toLowerCase();
+      if (roomA !== roomB) return false;
+
+      const startA = currentSession.waktu_mulai || '08:00';
+      const endA = currentSession.waktu_selesai || '10:00';
+      const startB = other.waktu_mulai || '08:00';
+      const endB = other.waktu_selesai || '10:00';
+
+      return (startA < endB) && (startB < endA);
+    });
+  };
+
   // Animation Variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -267,22 +285,87 @@ const Dashboard = () => {
                 />
                 
                 {selectedDateInfo && (
-                  <div className="w-100 p-3 bg-light rounded-3 border">
-                    <h6 className="fw-bold mb-2 border-bottom pb-2">
-                      <i className="bi bi-info-circle-fill text-primary me-2"></i>
-                      Detail Tanggal: {selectedDateInfo.date}
-                    </h6>
+                  <div className="w-100 p-3 bg-light rounded-3 border shadow-sm">
+                    <div className="d-flex align-items-center justify-content-between border-bottom pb-2 mb-2">
+                      <h6 className="fw-bold mb-0 text-dark" style={{ fontSize: '0.88rem' }}>
+                        <i className="bi bi-calendar-event text-primary me-2"></i>
+                        Detail: {selectedDateInfo.date}
+                      </h6>
+                      <span className="badge bg-primary rounded-pill fw-bold">
+                        {selectedDateInfo.sessions.length} Sesi
+                      </span>
+                    </div>
+
+                    {/* Conflict Warning Alert */}
+                    {selectedDateInfo.sessions.some(s => checkSessionConflict(s, selectedDateInfo.sessions)) && (
+                      <div className="alert alert-danger p-2 mb-2 rounded-3 small fw-bold d-flex align-items-center gap-2 border-danger border-opacity-25" style={{ fontSize: '0.75rem' }}>
+                        <i className="bi bi-exclamation-triangle-fill text-danger fs-6"></i>
+                        <span>Terdeteksi Bentrok Ruangan & Waktu pada Tanggal Ini!</span>
+                      </div>
+                    )}
+
                     {selectedDateInfo.sessions.length > 0 ? (
-                      <ul className="list-unstyled mb-0" style={{ maxHeight: '120px', overflowY: 'auto' }}>
-                        {selectedDateInfo.sessions.map((s, idx) => (
-                          <li key={idx} className="mb-2 pb-2 border-bottom last-child-no-border">
-                            <span className="fw-bold text-dark d-block">{s.mata_kuliah} - Kelas {s.kode_kelas}</span>
-                            <span className="text-muted small"><i className="bi bi-bookmark-fill text-warning me-1"></i>Sesi ke-{s.sesi_ke}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="d-flex flex-column gap-2" style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                        {selectedDateInfo.sessions.map((s, idx) => {
+                          const isConflicting = checkSessionConflict(s, selectedDateInfo.sessions);
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`p-2.5 rounded-3 border transition-all ${
+                                isConflicting 
+                                  ? 'bg-danger bg-opacity-10 border-danger' 
+                                  : 'bg-white border-secondary border-opacity-25'
+                              }`}
+                            >
+                              <div className="d-flex justify-content-between align-items-start mb-1">
+                                <div>
+                                  <span className="fw-bold text-dark d-block" style={{ fontSize: '0.85rem' }}>
+                                    {s.mata_kuliah} - Kelas {s.kode_kelas}
+                                  </span>
+                                  <small className="text-muted fw-semibold" style={{ fontSize: '0.75rem' }}>
+                                    <i className="bi bi-bookmark-fill text-warning me-1"></i>Sesi ke-{s.sesi_ke}
+                                  </small>
+                                </div>
+                                {isConflicting ? (
+                                  <span className="badge bg-danger text-white rounded-pill px-2 py-0.5 fw-bold shadow-sm" style={{ fontSize: '0.68rem' }}>
+                                    <i className="bi bi-exclamation-triangle-fill me-1"></i>Konflik!
+                                  </span>
+                                ) : (
+                                  <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-0.5 fw-bold" style={{ fontSize: '0.68rem' }}>
+                                    Normal
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="d-flex align-items-center justify-content-between mt-2 pt-2 border-top border-secondary border-opacity-10" style={{ fontSize: '0.76rem' }}>
+                                <div className="d-flex align-items-center gap-2 flex-wrap">
+                                  <span className="text-muted">
+                                    <i className="bi bi-clock me-1 text-primary"></i>
+                                    <strong className="text-dark">{s.waktu_mulai || '08:00'} &ndash; {s.waktu_selesai || '10:00'}</strong>
+                                  </span>
+                                  <span className="badge bg-secondary bg-opacity-10 text-dark border border-secondary border-opacity-25 rounded-pill">
+                                    <i className="bi bi-geo-alt me-1 text-danger"></i>
+                                    {s.ruangan || 'Lab B'}
+                                  </span>
+                                </div>
+
+                                {s.id_praktikum && (
+                                  <Link
+                                    to="/admin/praktikum"
+                                    state={{ openSessionClassId: s.id_praktikum, targetSessionId: s.id_pertemuan }}
+                                    className="btn btn-outline-primary btn-sm rounded-pill px-2 py-0.5 fw-bold ms-auto"
+                                    style={{ fontSize: '0.7rem' }}
+                                  >
+                                    Kelola <i className="bi bi-arrow-right"></i>
+                                  </Link>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     ) : (
-                      <p className="text-muted small mb-0 fst-italic">Tidak ada sesi praktikum pada tanggal ini.</p>
+                      <p className="text-muted small mb-0 fst-italic text-center py-2">Tidak ada sesi praktikum pada tanggal ini.</p>
                     )}
                   </div>
                 )}

@@ -222,8 +222,9 @@ exports.downloadMaterialFile = async (req, res, next) => {
     }
 
     // Set Headers
+    const cleanDownloadName = file.filename ? file.filename.replace(/^\d+-\d+-(?:\d+-)?/, '') : 'materi-download';
     res.setHeader('Content-Type', file.mimetype);
-    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${cleanDownloadName}"`);
     res.setHeader('Content-Length', file.size);
 
     // Create Stream with error handling before headers are sent
@@ -350,7 +351,8 @@ exports.downloadTaskAttachment = async (req, res) => {
       });
     }
     
-    res.download(filePath, file.filename);
+    const cleanTaskFileName = file.filename ? file.filename.replace(/^\d+-\d+-(?:\d+-)?/, '') : 'soal-download';
+    res.download(filePath, cleanTaskFileName);
 
   } catch (error) {
     console.error("Download Error:", error);
