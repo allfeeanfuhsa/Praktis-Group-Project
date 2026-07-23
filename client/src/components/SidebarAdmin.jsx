@@ -14,22 +14,16 @@ const SidebarAdmin = () => {
     };
 
     return (
-        <div className="bg-white" id="sidebar-wrapper">
+        <div className="d-flex flex-column h-100" id="sidebar-wrapper">
             <div className="sidebar-heading text-center py-4 primary-text fs-4 fw-bold text-uppercase border-bottom">
-                <i className="bi bi-shield-lock me-2"></i>Admin
+                <i className="bi bi-shield-lock me-2 text-primary"></i>Admin
             </div>
 
-            <div className="list-group list-group-flush my-3">
+            <div className="list-group list-group-flush my-3 px-2 flex-grow-1">
                 <SidebarNavLink 
                     to="/admin/dashboard" 
                     icon="bi-speedometer2" 
                     label="Dashboard" 
-                />
-
-                <SidebarNavLink 
-                    to="/admin/asdos-manager" 
-                    icon="bi-person-badge" 
-                    label="Manajemen Asdos" 
                 />
 
                 <SidebarNavLink 
@@ -44,12 +38,18 @@ const SidebarAdmin = () => {
                     label="Manajemen Praktikum" 
                 />
 
-                <button
-                    onClick={handleLogout}
-                    className="list-group-item list-group-item-action bg-transparent text-danger border-0"
-                >
-                    <i className="bi bi-box-arrow-right me-2"></i>Logout
-                </button>
+                <SidebarNavLink 
+                    to="/admin/files" 
+                    icon="bi-folder2-open" 
+                    label="Manajemen Berkas" 
+                />
+
+                <SidebarNavLink 
+                    to="/admin/sessions" 
+                    icon="bi-shield-slash" 
+                    label="Keamanan & Sesi IP" 
+                />
+
             </div>
         </div>
     );

@@ -8,10 +8,12 @@ const submissionController = require('../controllers/submissionController');
 const verifyToken = require('../middleware/authMiddleware');
 const checkRole = require('../middleware/rbacMiddleware');
 const createUploader = require('../middleware/uploadMiddleware');
+const validateMimeType = require('../middleware/validateMimeType'); // 2.7
 
 // Uploaders
 const uploadMaterial = createUploader('materials');
 const uploadTask = createUploader('tasks'); 
+const uploadRateLimiter = require('../middleware/uploadRateLimiter');
 
 router.use(verifyToken);
 
@@ -28,6 +30,10 @@ router.post('/session',
 // Read (List)
 router.get('/session/list/:id_praktikum', 
   contentController.getSessionsByClass
+);
+
+router.get('/class-info/:id_praktikum', 
+  contentController.getClassInfo
 );
 
 // NEW: Update (Reschedule)
@@ -49,14 +55,18 @@ router.delete('/session/:id',
 // Upload Material
 router.post('/materi',
   checkRole(['asdos', 'admin']),
+  uploadRateLimiter,             // Anti-Abuse: Max 10 uploads / 15 mins
   uploadMaterial.array('files', 5),
+  validateMimeType,              // 2.7: Validate real MIME via magic bytes
   contentController.createMaterial
 );
 
 // Create Task
 router.post('/tugas', 
   checkRole(['asdos', 'admin']),
-  uploadTask.array('files', 5), 
+  uploadRateLimiter,             // Anti-Abuse: Max 10 uploads / 15 mins
+  uploadTask.array('files', 5),
+  validateMimeType,              // 2.7: Validate real MIME via magic bytes
   contentController.createTask
 );
 
@@ -74,5 +84,7 @@ router.get('/tugas/:id', contentController.getTaskById);
 router.get('/me/:taskId', submissionController.getMySubmission);
 
 router.get('/session/:id', contentController.getSessionById);
+
+router.get('/user-timeline', contentController.getUserTimeline);
 
 module.exports = router;

@@ -3,13 +3,11 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const checkRole = require('../middleware/rbacMiddleware');
+const { PraktikumUserRole, Role } = require('../models/sql');
 
 // === FIX IS HERE ===
 // Remove the { } brackets. Import it directly.
 const verifyToken = require('../middleware/authMiddleware');
-
-// Debugging: This should print "[Function: verifyToken]"
-console.log('VerifyToken Check:', verifyToken);
 
 // Apply Auth Middleware
 router.use(verifyToken);
@@ -17,6 +15,37 @@ router.use(verifyToken);
 // 1. Profile
 router.get('/profile', userController.getProfile);
 router.put('/profile', userController.updateProfile);
+
+// 2a. Per-class role check (used by asdos SessionDetail to guard manual URL access)
+router.get('/my-class-role/:id_praktikum', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id_praktikum } = req.params;
+
+    // Global admins always have access
+    if (req.user.roles?.includes('admin')) {
+      return res.json({ role: 'admin' });
+    }
+
+    const allRoles = await Role.findAll({ attributes: ['id_role', 'deskripsi'] });
+    const roleNameById = {};
+    allRoles.forEach(r => { roleNameById[r.id_role] = r.deskripsi; });
+
+    const enrollment = await PraktikumUserRole.findOne({
+      where: { id_user: userId, id_praktikum }
+    });
+
+    if (!enrollment) {
+      return res.status(403).json({ role: null, message: 'Not enrolled in this class' });
+    }
+
+    const role = roleNameById[enrollment.id_role] || 'mahasiswa';
+    return res.json({ role });
+  } catch (err) {
+    console.error('my-class-role error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 // 2. Dashboards
 router.get('/asdos-dashboard', userController.getAsdosDashboard);
@@ -30,7 +59,9 @@ router.get('/admin/users/:id',
   userController.getUserById
 );
 
-router.put('/admin/users/:id', verifyToken, userController.updateUserByAdmin);
+// Security fix (BG-5): checkRole(['admin']) added — previously any authenticated user
+// could update any other user's profile via this endpoint.
+router.put('/admin/users/:id', checkRole(['admin']), userController.updateUserByAdmin);
 
 // Assign Class
 router.post('/admin/enroll',

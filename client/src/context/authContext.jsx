@@ -1,72 +1,80 @@
 import { createContext, useState, useEffect, useContext } from 'react';
-import { jwtDecode } from 'jwt-decode';
 import { useNavigate } from 'react-router-dom';
-import { getDashboardByRole } from '../utils/roleHelper'; // Import the helper
+import { getDashboardByRole } from '../utils/roleHelper';
+import api from '../utils/api';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Initialize user from LocalStorage if available to prevent "flicker" on refresh
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  const [token, setToken] = useState(localStorage.getItem('token') || null);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // 1. Check Token Expiry on Load
+  // 1. Session Hydration: Validate session against server on app load
   useEffect(() => {
-    if (token) {
+    const checkAuthSession = async () => {
       try {
-        const decoded = jwtDecode(token);
-        if (decoded.exp * 1000 < Date.now()) {
-          logout();
+        // Clean up legacy localStorage keys to eliminate security vulnerabilities
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+
+        const response = await api.get('/api/auth/me');
+        if (response.data && response.data.user) {
+          setUser(response.data.user);
+        } else {
+          setUser(null);
         }
       } catch (error) {
-        logout();
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-    }
-  }, [token]);
+    };
+
+    checkAuthSession();
+  }, []);
 
   // 2. Login Function
   const login = (newToken, userData) => {
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setToken(newToken);
+    // Purge disk storage — session is authenticated via HttpOnly cookie
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+
     setUser(userData);
 
     // --- SMART REDIRECT LOGIC ---
     const roles = userData.roles || [];
 
-    // Special Case: Admin usually skips selection (optional, depends on your pref)
     if (roles.includes('admin')) {
       navigate('/admin/dashboard');
       return;
     }
 
-    // Special Case: Multiple Roles -> Go to Selection Page
     if (roles.length > 1) {
       navigate('/auth/role-selection');
       return;
     }
 
-    // Standard Case: Single Role -> Use Helper
     const targetPath = getDashboardByRole(roles);
     navigate(targetPath);
   };
 
-  // 3. Logout Function
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
-    setUser(null);
-    navigate('/auth/login');
+  // 3. Logout Function — clears server-side HttpOnly cookie
+  const logout = async () => {
+    try {
+      await api.post('/api/auth/logout');
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+      navigate('/auth/login');
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, token }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, token: user ? 'cookie-active' : null }}>
       {children}
     </AuthContext.Provider>
   );

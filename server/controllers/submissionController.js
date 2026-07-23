@@ -2,8 +2,10 @@
 const Pengumpulan = require('../models/nosql/Pengumpulan');
 const Tugas = require('../models/nosql/Tugas');
 const { PraktikumUserRole, Role, Pertemuan, User } = require('../models/sql');
+const fs = require('fs');
+const path = require('path');
 
-// 1. STUDENT: Submit File (Smart Update)
+// 1. STUDENT: Submit File (Smart Update with Old File Cleanup)
 exports.submitWork = async (req, res) => {
   try {
     const { tugas_id } = req.body;
@@ -20,13 +22,9 @@ exports.submitWork = async (req, res) => {
 
     const now = new Date();
     const deadline = new Date(task.tenggat_waktu);
-
-    // Optional: Allow late submissions but mark them? 
-    // Or block strictly? Your previous code blocked strictly.
-    // Let's implement "Mark as Late" instead of blocking, which is friendlier.
     const status = now > deadline ? 'terlambat' : 'diserahkan';
 
-    // C. Enrollment Check (Keep your existing robust logic!)
+    // C. Enrollment Check
     const session = await Pertemuan.findByPk(task.pertemuan_id);
     if (session) {
       const enrollment = await PraktikumUserRole.findOne({
@@ -39,7 +37,16 @@ exports.submitWork = async (req, res) => {
       }
     }
 
-    // D. The "Smart Save" (Update if exists, Create if new)
+    // D. Clean up previous physical file from disk if re-submitting
+    const existingSubmission = await Pengumpulan.findOne({ tugas_id: tugas_id, student_id: studentId });
+    if (existingSubmission && existingSubmission.file && existingSubmission.file.path) {
+      const oldPath = path.join(__dirname, '..', existingSubmission.file.path);
+      if (fs.existsSync(oldPath)) {
+        try { fs.unlinkSync(oldPath); } catch (e) { console.error('Failed to remove old file:', e); }
+      }
+    }
+
+    // E. The "Smart Save" (Update if exists, Create if new)
     const fileData = {
       filename: file.filename,
       path: file.path,
@@ -48,17 +55,15 @@ exports.submitWork = async (req, res) => {
     };
 
     const submission = await Pengumpulan.findOneAndUpdate(
-      { tugas_id: tugas_id, student_id: studentId }, // Find by composite key
+      { tugas_id: tugas_id, student_id: studentId },
       {
         $set: {
           file: fileData,
           status: status,
           submitted_at: now,
-          // We do NOT reset 'nilai' or 'feedback' here to preserve history if needed,
-          // or you can clear them if you want a fresh start.
         }
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
     );
 
     res.status(200).json({
@@ -148,11 +153,6 @@ exports.gradeWork = async (req, res) => {
 };
 
 // 3. Download File
-// controllers/contentController.js (or submissionController.js)
-
-const path = require('path');
-const fs = require('fs');
-
 exports.downloadFile = async (req, res, next) => {
   try {
     const { submissionId } = req.params;
@@ -173,27 +173,39 @@ exports.downloadFile = async (req, res, next) => {
     // A. Normalize path separators (Fixes Windows backslashes from DB)
     const normalizedDbPath = file.path.replace(/\\/g, '/');
 
-    // B. Resolve Path Relative to THIS controller file
-    // __dirname = .../server/controllers
-    // '..'      = .../server
-    // normalizedDbPath = uploads/submissions/filename.pdf
-    const filePath = path.join(__dirname, '..', normalizedDbPath);
+    // B. Resolve absolute path
+    const filePath = path.resolve(path.join(__dirname, '..', normalizedDbPath));
 
-    // =========================================================
-
-    // Debugging
-    console.log("Looking for submission at:", filePath);
+    // Security fix (SV-9): Path traversal guard.
+    // Ensure the resolved path is within the expected uploads directory.
+    const uploadsRoot = path.resolve(path.join(__dirname, '..', 'uploads'));
+    if (!filePath.startsWith(uploadsRoot + path.sep) && filePath !== uploadsRoot) {
+      return res.status(403).json({ message: 'Access denied: invalid file path' });
+    }
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ message: 'File not found on server' });
     }
 
-    // Set Headers
+    // Send File Inline or Attachment
+    if (req.query.view === 'true') {
+      const mimeType = (file.mimetype && file.mimetype !== 'application/octet-stream') 
+        ? file.mimetype 
+        : undefined;
+
+      return res.sendFile(filePath, {
+        headers: {
+          ...(mimeType ? { 'Content-Type': mimeType } : {}),
+          'Content-Disposition': 'inline'
+        }
+      });
+    }
+
+    const cleanDownloadName = file.filename ? file.filename.replace(/^\d+-\d+-(?:\d+-)?/, '') : 'tugas-download';
     res.setHeader('Content-Type', file.mimetype);
-    res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${cleanDownloadName}"`);
     res.setHeader('Content-Length', file.size);
 
-    // Stream
     const stream = fs.createReadStream(filePath);
     stream.pipe(res);
 
@@ -325,6 +337,50 @@ exports.addComment = async (req, res, next) => {
 
     await submission.save();
     res.json({ message: "Comment added", data: submission });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 7. STUDENT / ASDOS / ADMIN: Delete / Unsubmit Work
+exports.deleteSubmission = async (req, res, next) => {
+  try {
+    const { submissionId } = req.params;
+    const userId = req.user.id;
+    const userRole = req.user.role || (req.user.roles ? req.user.roles[0] : null);
+
+    const mongoose = require('mongoose');
+    let submission = null;
+
+    if (mongoose.Types.ObjectId.isValid(submissionId)) {
+      submission = await Pengumpulan.findById(submissionId);
+    }
+    if (!submission) {
+      submission = await Pengumpulan.findOne({ tugas_id: submissionId, student_id: userId });
+    }
+
+    if (!submission) return res.status(404).json({ message: 'Pengumpulan tidak ditemukan.' });
+
+    // Authorization: Must be owner student, asdos, or admin
+    const isOwner = submission.student_id?.toString() === userId.toString();
+    const isStaff = ['asdos', 'admin'].includes(userRole);
+
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({ message: 'Anda tidak memiliki hak akses untuk menghapus pengumpulan ini.' });
+    }
+
+    // Delete physical file from server disk
+    if (submission.file && submission.file.path) {
+      const filePath = path.join(__dirname, '..', submission.file.path);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (e) { console.error('Failed to unlink submission file:', e); }
+      }
+    }
+
+    // Remove record from MongoDB
+    await Pengumpulan.findByIdAndDelete(submission._id);
+
+    res.json({ message: 'Pengumpulan berhasil dibatalkan & berkas dihapus dari sistem.' });
   } catch (error) {
     next(error);
   }

@@ -1,19 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
+import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const SessionDetail = () => {
-    const { id_pertemuan } = useParams();
-    
+    const { id_pertemuan, id_praktikum } = useParams();
+    const navigate = useNavigate();
+
     // Data States
     const [materials, setMaterials] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('materi');
 
-    // Form States
-    const [activeTab, setActiveTab] = useState('materi'); // 'materi' or 'tugas'
+    // Detail Modal State
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [selectedType, setSelectedType] = useState('materi');
+
+    const handleShowDetail = (item, type) => {
+        setSelectedItem(item);
+        setSelectedType(type);
+        setShowDetailModal(true);
+    };
+
+    const handleDeleteContentFile = async (e, category, id) => {
+        e.stopPropagation();
+        if (!window.confirm(`Apakah Anda yakin ingin menghapus berkas ${category} ini dari sistem?`)) return;
+        try {
+            await api.delete(`/api/admin/files/${category}/${id}/0`);
+            alert(`Berkas ${category} berhasil dihapus.`);
+            setShowDetailModal(false);
+            window.location.reload();
+        } catch (err) {
+            alert(err.response?.data?.message || `Gagal menghapus berkas ${category}.`);
+        }
+    }; // 'materi' or 'tugas'
     const [materiForm, setMateriForm] = useState({ judul: '', deskripsi: '', file: null });
     const [tugasForm, setTugasForm] = useState({ judul: '', deskripsi: '', tenggat_waktu: '', file: null });
+
+    // Guard: verify user is actually enrolled as asdos in this specific class
+    useEffect(() => {
+        const verifyClassRole = async () => {
+            try {
+                const res = await api.get(`/api/users/my-class-role/${id_praktikum}`);
+                const role = res.data?.role;
+                if (role !== 'asdos' && role !== 'admin') {
+                    // Not an asdos in this class — redirect to the correct mahasiswa view
+                    navigate(`/mahasiswa/kelas/${id_praktikum}/session/${id_pertemuan}`, { replace: true });
+                }
+            } catch {
+                // Not enrolled at all or server error — redirect away
+                navigate('/asdos/dashboard', { replace: true });
+            }
+        };
+        verifyClassRole();
+    }, [id_praktikum, id_pertemuan]);
 
     // Fetch Data on Load
     useEffect(() => {
@@ -79,145 +123,279 @@ const SessionDetail = () => {
         }
     };
 
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0 }
+    };
+
     return (
         <div className="container-fluid p-4">
-            {/* HEADER */}
-            <div className="mb-4">
-                <button onClick={() => window.history.back()} className="btn btn-link text-decoration-none text-muted p-0 mb-2">
-                    <i className="bi bi-arrow-left me-2"></i>Kembali ke Jadwal
-                </button>
-                <h3 className="fw-bold">Kelola Konten Pertemuan</h3>
-                <p className="text-muted small">Upload materi pembelajaran atau buat tugas baru.</p>
-            </div>
+            {/* HEADER BANNER */}
+            <ClassHeaderBanner 
+                id_praktikum={id_praktikum} 
+                activeTab="Kelola Pertemuan & Modul" 
+                backUrl={`/asdos/kelas/${id_praktikum}/jadwal`} 
+                backLabel="Kembali ke Jadwal Sesi" 
+            />
 
-            <div className="row">
+            <motion.div variants={containerVariants} initial="hidden" animate="visible" className="row">
                 {/* LEFT COLUMN: CONTENT LIST */}
-                <div className="col-md-7">
-                    
+                <motion.div variants={itemVariants} className="col-md-7">
+
                     {/* TABS */}
-                    <ul className="nav nav-pills mb-3">
+                    <ul className="nav nav-pills mb-4 gap-2 border-bottom border-light border-opacity-10 pb-3">
                         <li className="nav-item">
-                            <button className={`nav-link ${activeTab === 'materi' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('materi')}>
+                            <button
+                                className={`nav-link rounded-pill px-4 ${activeTab === 'materi' ? 'active bg-primary text-white fw-bold shadow' : 'text-light border border-light border-opacity-25'}`}
+                                onClick={() => setActiveTab('materi')}
+                                style={activeTab !== 'materi' ? { background: 'rgba(255,255,255,0.05)' } : {}}
+                            >
                                 <i className="bi bi-file-earmark-pdf me-2"></i>Materi ({materials.length})
                             </button>
                         </li>
                         <li className="nav-item">
-                            <button className={`nav-link ${activeTab === 'tugas' ? 'active fw-bold' : ''}`} onClick={() => setActiveTab('tugas')}>
+                            <button
+                                className={`nav-link rounded-pill px-4 ${activeTab === 'tugas' ? 'active bg-primary text-white fw-bold shadow' : 'text-light border border-light border-opacity-25'}`}
+                                onClick={() => setActiveTab('tugas')}
+                                style={activeTab !== 'tugas' ? { background: 'rgba(255,255,255,0.05)' } : {}}
+                            >
                                 <i className="bi bi-pencil-square me-2"></i>Tugas ({tasks.length})
                             </button>
                         </li>
                     </ul>
 
                     {/* LIST AREA */}
-                    {loading ? <div className="text-center py-5">Loading...</div> : (
-                        <div className="card border-0 shadow-sm">
-                            <div className="list-group list-group-flush">
+                    {loading ? <div className="text-center text-light py-5"><div className="spinner-border text-light" role="status"></div></div> : (
+                        <div className="rounded-4 p-2">
+                            <div className="list-group list-group-flush bg-transparent">
                                 {activeTab === 'materi' ? (
-                                    materials.length === 0 ? <div className="p-4 text-center text-muted">Belum ada materi.</div> :
-                                    materials.map(m => (
-                                        <div key={m._id} className="list-group-item p-4">
-                                            <div className="d-flex align-items-center">
-                                                <div className="bg-danger bg-opacity-10 p-3 rounded text-danger me-3">
-                                                    <i className="bi bi-file-earmark-pdf fs-4"></i>
-                                                </div>
-                                                <div>
-                                                    <h6 className="fw-bold mb-1">{m.judul}</h6>
-                                                    <p className="small text-muted mb-0">{m.deskripsi}</p>
-                                                    {/* If attachment exists */}
-                                                    {m.attachments && m.attachments[0] && (
-                                                        <small className="text-primary mt-1 d-block">
-                                                            <i className="bi bi-paperclip me-1"></i>{m.attachments[0].filename}
-                                                        </small>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    tasks.length === 0 ? <div className="p-4 text-center text-muted">Belum ada tugas.</div> :
-                                    tasks.map(t => (
-                                        <div key={t._id} className="list-group-item p-4">
-                                            <div className="d-flex justify-content-between">
+                                    materials.length === 0 ? <div className="p-5 text-center text-light opacity-50"><i className="bi bi-inbox fs-1 d-block mb-3"></i>Belum ada materi.</div> :
+                                        materials.map(m => (
+                                            <div
+                                                key={m._id}
+                                                className="glass-card rounded-4 list-group-item bg-transparent border-bottom border-light border-opacity-10 p-4"
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => handleShowDetail(m, 'materi')}
+                                            >
                                                 <div className="d-flex align-items-center">
-                                                    <div className="bg-warning bg-opacity-10 p-3 rounded text-warning me-3">
-                                                        <i className="bi bi-clipboard-check fs-4"></i>
+                                                    <div className="bg-danger bg-opacity-25 p-3 rounded-4 text-white me-4 shadow-sm">
+                                                        <i className="bi bi-file-earmark-pdf fs-3"></i>
                                                     </div>
                                                     <div>
-                                                        <h6 className="fw-bold mb-1">{t.judul}</h6>
-                                                        <p className="small text-muted mb-1">{t.deskripsi}</p>
-                                                        <span className="badge bg-light text-dark border">
-                                                            <i className="bi bi-clock me-1"></i>Deadline: {new Date(t.tenggat_waktu).toLocaleString()}
-                                                        </span>
+                                                        <h5 className="fw-bold text-white mb-1">{m.judul}</h5>
+
+                                                        {/* If attachment exists */}
+                                                        {m.attachments && m.attachments[0] && (
+                                                            <div className="d-flex align-items-center gap-2 mt-2 flex-wrap">
+                                                                <a
+                                                                    href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/materi/${m._id}/download/0?view=true`}
+                                                                    target="_blank" rel="noopener noreferrer"
+                                                                    className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-block hover-opacity-100"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <i className="bi bi-paperclip me-2"></i>{getCleanFilename(m.attachments[0].filename)}
+                                                                </a>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 fw-bold"
+                                                                    title="Hapus Berkas Materi"
+                                                                    onClick={(e) => handleDeleteContentFile(e, 'materi', m._id)}
+                                                                    style={{ fontSize: '0.75rem' }}
+                                                                >
+                                                                    <i className="bi bi-trash3 me-1"></i>Hapus
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        ))
+                                ) : (
+                                    tasks.length === 0 ? <div className="p-5 text-center text-light opacity-50"><i className="bi bi-inbox fs-1 d-block mb-3"></i>Belum ada tugas.</div> :
+                                        tasks.map(t => (
+                                            <div
+                                                key={t._id}
+                                                className="glass-card rounded-4 list-group-item bg-transparent border-bottom border-light border-opacity-10 p-4"
+                                                style={{ cursor: 'pointer' }}
+                                                onClick={() => handleShowDetail(t, 'tugas')}
+                                            >
+                                                <div className="d-flex justify-content-between">
+                                                    <div className="d-flex align-items-center">
+                                                        <div className="bg-warning bg-opacity-25 p-3 rounded-4 text-white me-4 shadow-sm">
+                                                            <i className="bi bi-clipboard-check fs-3"></i>
+                                                        </div>
+                                                        <div>
+                                                            <h5 className="fw-bold text-white mb-2">{t.judul}</h5>
+                                                            <span className="badge border border-warning text-warning px-3 py-2 rounded-pill me-2 mb-1 d-inline-block" style={{ background: 'rgba(255,193,7,0.1)' }}>
+                                                                <i className="bi bi-clock me-2"></i>Deadline: {new Date(t.tenggat_waktu).toLocaleString()}
+                                                            </span>
+
+                                                            {/* If attachment exists */}
+                                                            {t.attachments && t.attachments[0] && (
+                                                                <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                                                                    <a
+                                                                        href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/tugas/${t._id}/download/0?view=true`}
+                                                                        target="_blank" rel="noopener noreferrer"
+                                                                        className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none d-inline-block hover-opacity-100"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        <i className="bi bi-paperclip me-2"></i>{getCleanFilename(t.attachments[0].filename)}
+                                                                    </a>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 fw-bold"
+                                                                        title="Hapus Lampiran Tugas"
+                                                                        onClick={(e) => handleDeleteContentFile(e, 'tugas', t._id)}
+                                                                        style={{ fontSize: '0.75rem' }}
+                                                                    >
+                                                                        <i className="bi bi-trash3 me-1"></i>Hapus
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
                                 )}
                             </div>
                         </div>
                     )}
-                </div>
+                </motion.div>
 
                 {/* RIGHT COLUMN: FORM INPUT */}
-                <div className="col-md-5">
-                    <div className="card border-0 shadow-sm sticky-top" style={{ top: '20px' }}>
-                        <div className="card-header bg-white py-3">
-                            <h6 className="fw-bold mb-0 text-primary">
+                <motion.div variants={itemVariants} className="col-md-5">
+                    <div className="glass-card static rounded-4 sticky-top overflow-hidden" style={{ top: '100px' }}>
+                        <div className="border-bottom border-light border-opacity-25 p-4">
+                            <h5 className="fw-bold mb-0 text-white">
                                 {activeTab === 'materi' ? 'Upload Materi Baru' : 'Buat Tugas Baru'}
-                            </h6>
+                            </h5>
                         </div>
-                        <div className="card-body">
+                        <div className="p-4">
                             {activeTab === 'materi' ? (
                                 /* MATERI FORM */
                                 <form onSubmit={handleMateriSubmit}>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Judul Materi</label>
-                                        <input type="text" className="form-control" required 
-                                            value={materiForm.judul} onChange={e=>setMateriForm({...materiForm, judul: e.target.value})}/>
+                                    <div className="mb-4">
+                                        <label className="form-label small fw-bold text-light opacity-75">Judul Materi</label>
+                                        <input type="text" className="form-control" required placeholder="Cth: Slide Pertemuan 1"
+                                            value={materiForm.judul} onChange={e => setMateriForm({ ...materiForm, judul: e.target.value })} />
                                     </div>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Deskripsi</label>
-                                        <textarea className="form-control" rows="2"
-                                            value={materiForm.deskripsi} onChange={e=>setMateriForm({...materiForm, deskripsi: e.target.value})}></textarea>
+                                    <div className="mb-4">
+                                        <label className="form-label small fw-bold text-light opacity-75">Deskripsi</label>
+                                        <textarea className="form-control" rows="3" placeholder="Tambahkan penjelasan singkat..."
+                                            value={materiForm.deskripsi} onChange={e => setMateriForm({ ...materiForm, deskripsi: e.target.value })}></textarea>
                                     </div>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">File (PDF/PPT)</label>
+                                    <div className="mb-4">
+                                        <label className="form-label small fw-bold text-light opacity-75">File (PDF/PPT)</label>
                                         <input type="file" className="form-control" required
-                                            onChange={e=>setMateriForm({...materiForm, file: e.target.files[0]})}/>
+                                            onChange={e => setMateriForm({ ...materiForm, file: e.target.files[0] })} />
                                     </div>
-                                    <button type="submit" className="btn btn-primary w-100 fw-bold">Upload</button>
+                                    <button type="submit" className="btn btn-primary w-100 fw-bold border-0 py-2 rounded-3 shadow" style={{ background: 'linear-gradient(135deg, #0d6efd, #0dcaf0)' }}>
+                                        <i className="bi bi-cloud-arrow-up me-2"></i>Upload Materi
+                                    </button>
                                 </form>
                             ) : (
                                 /* TUGAS FORM */
                                 <form onSubmit={handleTugasSubmit}>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Judul Tugas</label>
-                                        <input type="text" className="form-control" required
-                                            value={tugasForm.judul} onChange={e=>setTugasForm({...tugasForm, judul: e.target.value})}/>
+                                    <div className="mb-4">
+                                        <label className="form-label small fw-bold text-light opacity-75">Judul Tugas</label>
+                                        <input type="text" className="form-control" required placeholder="Cth: Tugas Praktikum 1"
+                                            value={tugasForm.judul} onChange={e => setTugasForm({ ...tugasForm, judul: e.target.value })} />
                                     </div>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Instruksi</label>
-                                        <textarea className="form-control" rows="3" required
-                                            value={tugasForm.deskripsi} onChange={e=>setTugasForm({...tugasForm, deskripsi: e.target.value})}></textarea>
+                                    <div className="mb-4">
+                                        <label className="form-label small fw-bold text-light opacity-75">Instruksi</label>
+                                        <textarea className="form-control" rows="3" required placeholder="Jelaskan detail tugas yang harus dikerjakan..."
+                                            value={tugasForm.deskripsi} onChange={e => setTugasForm({ ...tugasForm, deskripsi: e.target.value })}></textarea>
                                     </div>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Deadline</label>
+                                    <div className="mb-4">
+                                        <label className="form-label small fw-bold text-light opacity-75">Deadline</label>
                                         <input type="datetime-local" className="form-control" required
-                                            value={tugasForm.tenggat_waktu} onChange={e=>setTugasForm({...tugasForm, tenggat_waktu: e.target.value})}/>
+                                            value={tugasForm.tenggat_waktu} onChange={e => setTugasForm({ ...tugasForm, tenggat_waktu: e.target.value })} />
                                     </div>
-                                    <div className="mb-3">
-                                        <label className="form-label small fw-bold">Lampiran Soal (Opsional)</label>
+                                    <div className="mb-4">
+                                        <label className="form-label small fw-bold text-light opacity-75">Lampiran Soal (Opsional)</label>
                                         <input type="file" className="form-control"
-                                            onChange={e=>setTugasForm({...tugasForm, file: e.target.files[0]})}/>
+                                            onChange={e => setTugasForm({ ...tugasForm, file: e.target.files[0] })} />
                                     </div>
-                                    <button type="submit" className="btn btn-primary w-100 fw-bold">Buat Tugas</button>
+                                    <button type="submit" className="btn btn-primary w-100 fw-bold border-0 py-2 rounded-3 shadow" style={{ background: 'linear-gradient(135deg, #0d6efd, #0dcaf0)' }}>
+                                        <i className="bi bi-send-check me-2"></i>Buat Tugas
+                                    </button>
                                 </form>
                             )}
                         </div>
                     </div>
+                </motion.div>
+            </motion.div>
+
+            {/* DETAIL MODAL */}
+            {showDetailModal && selectedItem && (
+                <div className="modal fade show d-block" tabIndex="-1" style={{ backdropFilter: 'blur(15px)' }} onClick={() => setShowDetailModal(false)}>
+                    <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-content glass-card border-light border-opacity-25 shadow-lg rounded-4 overflow-hidden">
+                            <div className="modal-header border-bottom border-light border-opacity-10 p-4" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                <h4 className="modal-title fw-bold text-white d-flex align-items-center m-0">
+                                    <div className={`p-2 rounded-circle me-3 ${selectedType === 'materi' ? 'bg-danger text-white bg-opacity-25' : 'bg-warning text-white bg-opacity-25'}`}>
+                                        <i className={`bi ${selectedType === 'materi' ? 'bi-file-earmark-pdf' : 'bi-clipboard-check'} fs-4`}></i>
+                                    </div>
+                                    {selectedItem.judul}
+                                </h4>
+                                <button type="button" className="btn-close btn-close-white opacity-75 hover-opacity-100" onClick={() => setShowDetailModal(false)}></button>
+                            </div>
+                            <div className="modal-body text-white p-4">
+                                <div className="mb-4">
+                                    <h6 className="fw-bold text-info mb-3 text-uppercase tracking-wider small">Deskripsi</h6>
+                                    <div className="fs-5 opacity-75" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
+                                        {selectedItem.deskripsi}
+                                    </div>
+                                </div>
+
+                                {selectedType === 'tugas' && selectedItem.tenggat_waktu && (
+                                    <div className="mb-4">
+                                        <h6 className="fw-bold text-warning mb-3 text-uppercase tracking-wider small">Batas Waktu</h6>
+                                        <span className="badge border border-warning text-warning px-4 py-2 rounded-pill fs-6" style={{ background: 'rgba(255,193,7,0.1)' }}>
+                                            <i className="bi bi-clock me-2"></i>{new Date(selectedItem.tenggat_waktu).toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
+
+                                {selectedItem.attachments && selectedItem.attachments.length > 0 && (
+                                    <div className="mb-2">
+                                        <h6 className="fw-bold text-info mb-3 text-uppercase tracking-wider small">Lampiran</h6>
+                                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                                            <a
+                                                href={`${api.defaults.baseURL || 'http://localhost:5000'}/api/content/${selectedType}/${selectedItem._id}/download/0?view=true`}
+                                                target="_blank" rel="noopener noreferrer"
+                                                className="btn btn-outline-light rounded-pill px-4 py-2 fw-bold d-inline-flex align-items-center"
+                                            >
+                                                <i className="bi bi-download me-2 fs-5"></i> Buka {getCleanFilename(selectedItem.attachments[0].filename)}
+                                            </a>
+                                            <button
+                                                type="button"
+                                                className="btn btn-danger rounded-pill px-3 py-2 fw-bold d-inline-flex align-items-center"
+                                                onClick={(e) => handleDeleteContentFile(e, selectedType, selectedItem._id)}
+                                            >
+                                                <i className="bi bi-trash3 me-1"></i> Hapus Berkas
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="modal-footer border-0 p-4">
+                                <button type="button" className="btn btn-light fw-bold rounded-pill px-5" onClick={() => setShowDetailModal(false)}>Tutup</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            )}
+
         </div>
     );
 };

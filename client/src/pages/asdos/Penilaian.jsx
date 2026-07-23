@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../utils/api';
+import { getCleanFilename } from '../../utils/fileHelpers';
+import { motion } from 'framer-motion';
+import ClassHeaderBanner from '../../components/ClassHeaderBanner';
 
 const PenilaianAsdos = () => {
   const { id_praktikum, id_tugas } = useParams();
+  const navigate = useNavigate();
 
   // State
   const [taskTitle, setTaskTitle] = useState('');
@@ -11,43 +15,62 @@ const PenilaianAsdos = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Temporary state for grade inputs (so we can type before saving)
+  // Temporary state for grade inputs and save indicators
   const [inputGrades, setInputGrades] = useState({});
+  const [saveStatus, setSaveStatus] = useState({}); // sub._id -> 'saving' | 'saved' | null
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showOffcanvas, setShowOffcanvas] = useState(false);
   const [commentText, setCommentText] = useState("");
 
+  const handleDeleteSubmissionFile = async (submissionId) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus berkas pengumpulan tugas mahasiswa ini dari sistem?")) return;
+    try {
+      await api.delete(`/api/submission/${submissionId}`);
+      alert("Berkas pengumpulan berhasil dihapus.");
+      window.location.reload();
+    } catch (err) {
+      alert(err.response?.data?.message || "Gagal menghapus berkas pengumpulan.");
+    }
+  };
+
   // 1. Fetch Submissions
   useEffect(() => {
+    let isMounted = true;
     const fetchSubmissions = async () => {
       try {
         setLoading(true);
-        // Call the endpoint we created in the previous step
+        setError(null);
         const res = await api.get(`/api/submission/task/${id_tugas}`);
 
-        setTaskTitle(res.data.task_title);
-        setSubmissions(res.data.submissions);
+        if (isMounted) {
+          setTaskTitle(res.data.task_title || 'Tugas');
+          const subs = res.data.submissions || [];
+          setSubmissions(subs);
 
-        // Initialize input states with existing grades
-        const initialGrades = {};
-        res.data.submissions.forEach(sub => {
-          if (sub.nilai !== null) {
-            initialGrades[sub._id] = sub.nilai;
-          }
-        });
-        setInputGrades(initialGrades);
-
+          // Initialize input states with existing grades
+          const initialGrades = {};
+          subs.forEach(sub => {
+            if (sub.nilai !== null && sub.nilai !== undefined) {
+              initialGrades[sub._id] = sub.nilai;
+            }
+          });
+          setInputGrades(initialGrades);
+        }
       } catch (err) {
         console.error("Error fetching submissions:", err);
-        setError("Gagal memuat data pengumpulan.");
+        if (isMounted) setError("Gagal memuat data pengumpulan tugas.");
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     if (id_tugas) {
       fetchSubmissions();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [id_tugas]);
 
   // 2. Handle Grade Input Change
@@ -60,254 +83,406 @@ const PenilaianAsdos = () => {
 
   // 3. Save Grade to Backend
   const handleSaveGrade = async (submissionId) => {
-    try {
-      const gradeValue = inputGrades[submissionId];
+    const gradeValue = inputGrades[submissionId];
 
-      // Simple validation
-      if (gradeValue === '' || gradeValue < 0 || gradeValue > 100) {
-        alert("Nilai harus antara 0 - 100");
-        return;
-      }
+    // Simple validation
+    if (gradeValue === '' || gradeValue === undefined || gradeValue < 0 || gradeValue > 100) {
+      alert("Nilai harus berada di rentang 0 - 100");
+      return;
+    }
+
+    try {
+      setSaveStatus(prev => ({ ...prev, [submissionId]: 'saving' }));
 
       await api.put(`/api/submission/${submissionId}/grade`, {
-        nilai: gradeValue
+        nilai: Number(gradeValue)
       });
 
-      alert("Nilai berhasil disimpan!");
-
-      // Optional: Refresh data or just update local state visually
       setSubmissions(prev => prev.map(sub =>
-        sub._id === submissionId ? { ...sub, nilai: gradeValue } : sub
+        sub._id === submissionId ? { ...sub, nilai: Number(gradeValue) } : sub
       ));
+
+      setSaveStatus(prev => ({ ...prev, [submissionId]: 'saved' }));
+
+      // Clear saved indicator after 2 seconds
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [submissionId]: null }));
+      }, 2000);
 
     } catch (err) {
       console.error("Error grading:", err);
+      setSaveStatus(prev => ({ ...prev, [submissionId]: null }));
       alert("Gagal menyimpan nilai.");
     }
   };
 
-  // 4. Download Handler
-  const handleDownload = async (submissionId, filename) => {
-    try {
-      const response = await api.get(`/api/submission/${submissionId}/download`, {
-        responseType: 'blob'
-      });
+  // 5. Discussion / Comments logic
+  const openComments = (sub) => {
+    setSelectedSubmission(sub);
+    setShowOffcanvas(true);
+  };
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename || 'tugas_mahasiswa');
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
+  const handleSendCommentAsdos = async () => {
+    if (!commentText.trim() || !selectedSubmission) return;
+
+    try {
+      const res = await api.post(
+        `/api/submission/${selectedSubmission._id}/comment`,
+        { text: commentText }
+      );
+
+      setCommentText("");
+
+      const updatedDoc = res.data.data;
+
+      setSubmissions(prev =>
+        prev.map(sub =>
+          sub._id === selectedSubmission._id 
+            ? { 
+                ...updatedDoc, 
+                student_name: sub.student_name, 
+                student_nim: sub.student_nim 
+              } 
+            : sub
+        )
+      );
+
+      setSelectedSubmission(prev => ({
+        ...updatedDoc,
+        student_name: prev?.student_name,
+        student_nim: prev?.student_nim
+      }));
+
     } catch (err) {
-      console.error("Download error", err);
-      alert("Gagal mengunduh file.");
+      console.error("Error comment:", err);
+      alert("Gagal mengirim komentar.");
     }
   };
-const openComments = (sub) => {
-  setSelectedSubmission(sub);
-  setShowOffcanvas(true);
-};
 
-const handleSendCommentAsdos = async () => {
-  if (!commentText.trim() || !selectedSubmission) return;
+  // Helper: Open file in a new tab with JWT Auth headers
+  const handleViewFile = async (endpoint) => {
+    try {
+      const res = await api.get(endpoint, { responseType: 'blob' });
+      const contentType = res.headers['content-type'] || 'application/pdf';
+      const blob = new Blob([res.data], { type: contentType });
+      const fileURL = window.URL.createObjectURL(blob);
+      window.open(fileURL, '_blank');
+    } catch (err) {
+      console.error("View file error:", err);
+      alert("Gagal membuka berkas. Silakan coba lagi.");
+    }
+  };
 
-  try {
-    const res = await api.post(
-      `/api/submission/${selectedSubmission._id}/comment`,
-      {
-        text: commentText
-      }
-    );
-
-    setCommentText("");
-
-    setSubmissions(prev =>
-      prev.map(sub =>
-        sub._id === selectedSubmission._id ? res.data.data : sub
-      )
-    );
-
-    setSelectedSubmission(res.data.data);
-
-  } catch (err) {
-    console.error("Error comment:", err);
-    alert("Gagal mengirim komentar.");
-  }
-};
   // Helper: Format Date
   const formatDate = (dateString) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleString('id-ID', {
       day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
     });
   };
 
-  if (loading) return <div className="text-center py-5">Loading data...</div>;
-  if (error) return <div className="alert alert-danger">{error}</div>;
+  // Stat Calculations
+  const totalSubmissions = submissions.length;
+  const gradedSubmissions = submissions.filter(s => s.nilai !== null && s.nilai !== undefined).length;
+  const pendingSubmissions = totalSubmissions - gradedSubmissions;
+  const averageGrade = gradedSubmissions > 0
+    ? (submissions.reduce((acc, curr) => acc + (Number(curr.nilai) || 0), 0) / gradedSubmissions).toFixed(1)
+    : '0';
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.08 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    visible: { opacity: 1, y: 0 }
+  };
+
+  const baseURL = api.defaults.baseURL || 'http://localhost:5000';
+
+  if (loading) {
+    return (
+      <div className="text-center py-5 text-light">
+        <div className="spinner-border text-light" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="opacity-75 mt-3">Memuat lembar penilaian...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="glass-card static rounded-4 p-4 text-white text-center">
+        <i className="bi bi-exclamation-circle fs-1 d-block mb-3 text-danger"></i>
+        {error}
+      </div>
+    );
+  }
 
   return (
-    <div className="container-fluid px-0">
-      {/* Header */}
-      <div className="mb-4">
-        <Link to={`/asdos/kelas/${id_praktikum}/tugas`} className="text-decoration-none text-muted mb-2 d-inline-block">
-          <i className="bi bi-arrow-left me-1"></i> Kembali ke Daftar Tugas
-        </Link>
-        <h3 className="fw-bold">Penilaian: {taskTitle}</h3>
-        <p className="text-muted">Daftar mahasiswa yang telah mengumpulkan tugas.</p>
-      </div>
+    <div className="container-fluid p-0">
+      {/* HEADER BANNER */}
+      <ClassHeaderBanner 
+        id_praktikum={id_praktikum} 
+        activeTab={`Penilaian: ${taskTitle || 'Tugas'}`} 
+        backUrl={`/asdos/kelas/${id_praktikum}/tugas`} 
+        backLabel="Kembali ke Daftar Tugas" 
+      />
 
-      {/* Table */}
-      <div className="card shadow-sm border-0">
-        <div className="card-body p-0">
-          <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
-              <thead className="bg-light">
-                <tr>
-                  <th className="px-4 py-3">Mahasiswa</th>
-                  <th>Waktu Pengumpulan</th>
-                  <th>File Tugas</th>
-                  <th style={{ width: '150px' }}>Nilai (0-100)</th>
-                  <th style={{ width: '100px' }}>Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="text-center py-4 text-muted">
-                      Belum ada mahasiswa yang mengumpulkan.
-                    </td>
-                  </tr>
-                ) : (
-                  submissions.map((sub) => (
-                    <tr key={sub._id}>
-                      <td className="px-4">
-                        <div className="fw-bold">{sub.student_name || 'Nama Tidak Dikenal'}</div>
-                        <div className="small text-muted">{sub.student_nim || '-'}</div>
-                      </td>
-                      <td>
-                        {formatDate(sub.submitted_at)} {/* Changed from created_at to submitted_at */}
-                      </td>
-                      <td>
-                        {/* === FIX IS HERE === */}
-                        {/* OLD: sub.filename (undefined) */}
-                        {/* NEW: sub.file.filename (correct) */}
-                        <button
-                          onClick={() => handleDownload(sub._id, sub.file ? sub.file.filename : 'tugas.pdf')}
-                          className="btn btn-sm btn-outline-primary"
-                        >
-                          <i className="bi bi-file-earmark-arrow-down me-1"></i>
-                          Download
-                        </button>
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="form-control"
-                          value={inputGrades[sub._id] || ''}
-                          onChange={(e) => handleInputChange(sub._id, e.target.value)}
-                          placeholder="0"
-                          min="0"
-                          max="100"
-                        />
-                      </td>
-                      <td>
-                      <div className="d-flex gap-2">
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleSaveGrade(sub._id)}
-                        >
-                          <i className="bi bi-save"></i>
-                        </button>
-
-                        <button
-                          className="btn btn-sm btn-outline-info"
-                          onClick={() => openComments(sub)}
-                          title="Buka Komentar"
-                        >
-                          <i className="bi bi-chat-dots-fill"></i>
-                        </button>
-                      </div>
-                    </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      {/* QUICK STATS BAR */}
+      <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="row g-3 mb-4">
+        <div className="col-6 col-md-3">
+          <div className="glass-card static rounded-4 p-3 d-flex align-items-center">
+            <div className="bg-primary bg-opacity-25 p-3 rounded-4 text-white me-3">
+              <i className="bi bi-people fs-4"></i>
+            </div>
+            <div>
+              <small className="text-light opacity-75 d-block">Pengumpulan</small>
+              <h4 className="fw-bold text-white mb-0">{totalSubmissions}</h4>
+            </div>
           </div>
         </div>
-      </div>
-      {showOffcanvas && (
-  <>
-    <div
-      className="offcanvas offcanvas-end show"
-      tabIndex="-1"
-      style={{ visibility: "visible", zIndex: 1050 }}
-    >
-      <div className="offcanvas-header border-bottom bg-light">
-        <h5 className="offcanvas-title fw-bold">
-          <i className="bi bi-chat-dots-fill text-primary me-2"></i>
-          Diskusi Mahasiswa
-        </h5>
-        <button
-          type="button"
-          className="btn-close"
-          onClick={() => setShowOffcanvas(false)}
-        ></button>
-      </div>
 
-      <div className="offcanvas-body d-flex flex-column" style={{ backgroundColor: "#f8f9fa" }}>
-        <div className="flex-grow-1 overflow-auto mb-3 p-3 bg-white rounded-3 border shadow-sm">
-          {selectedSubmission?.comments?.length > 0 ? (
-            selectedSubmission.comments.map((comment, idx) => (
-              <div key={idx} className="mb-3">
-                <div className="small fw-bold text-muted mb-1">
-                  {comment.senderName || "User"}
-                </div>
-                <div className="p-2 rounded-3 shadow-sm bg-light border">
-                  {comment.text}
-                </div>
-                <div className="small text-muted mt-1" style={{ fontSize: "0.65rem" }}>
-                  {comment.createdAt ? new Date(comment.createdAt).toLocaleString("id-ID") : ""}
+        <div className="col-6 col-md-3">
+          <div className="glass-card static rounded-4 p-3 d-flex align-items-center">
+            <div className="bg-success bg-opacity-25 p-3 rounded-white me-3">
+              <i className="bi bi-check2-circle fs-4 text-success"></i>
+            </div>
+            <div>
+              <small className="text-light opacity-75 d-block">Sudah Dinilai</small>
+              <h4 className="fw-bold text-white mb-0">{gradedSubmissions}</h4>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-6 col-md-3">
+          <div className="glass-card static rounded-4 p-3 d-flex align-items-center">
+            <div className="bg-warning bg-opacity-25 p-3 rounded-white me-3">
+              <i className="bi bi-hourglass-split fs-4 text-warning"></i>
+            </div>
+            <div>
+              <small className="text-light opacity-75 d-block">Belum Dinilai</small>
+              <h4 className="fw-bold text-white mb-0">{pendingSubmissions}</h4>
+            </div>
+          </div>
+        </div>
+
+        <div className="col-6 col-md-3">
+          <div className="glass-card static rounded-4 p-3 d-flex align-items-center">
+            <div className="bg-info bg-opacity-25 p-3 rounded-white me-3">
+              <i className="bi bi-award fs-4 text-info"></i>
+            </div>
+            <div>
+              <small className="text-light opacity-75 d-block">Rata-Rata Nilai</small>
+              <h4 className="fw-bold text-white mb-0">{averageGrade}</h4>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* SUBMISSIONS TABLE */}
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="glass-card static rounded-4 overflow-hidden p-0 mb-4">
+        <div className="table-responsive">
+          <table className="table table-dark table-hover align-middle mb-0 bg-transparent">
+            <thead>
+              <tr className="border-bottom border-light border-opacity-10 text-uppercase tracking-wider small text-light opacity-75">
+                <th className="px-4 py-3 bg-transparent">Mahasiswa</th>
+                <th className="py-3 bg-transparent">Waktu Pengumpulan</th>
+                <th className="py-3 bg-transparent">Berkas Tugas</th>
+                <th className="py-3 bg-transparent" style={{ width: '160px' }}>Nilai (0-100)</th>
+                <th className="py-3 px-4 bg-transparent text-end" style={{ width: '160px' }}>Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {submissions.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center py-5 text-light opacity-50 bg-transparent">
+                    <i className="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+                    Belum ada mahasiswa yang mengumpulkan tugas ini.
+                  </td>
+                </tr>
+              ) : (
+                submissions.map((sub) => {
+                  const isGraded = sub.nilai !== null && sub.nilai !== undefined;
+                  const currentStatus = saveStatus[sub._id];
+
+                  return (
+                    <motion.tr variants={itemVariants} key={sub._id} className="border-bottom border-light border-opacity-10">
+                      {/* Mahasiswa info */}
+                      <td className="px-4 bg-transparent">
+                        <div className="fw-bold text-white">{sub.student_name || 'Nama Tidak Dikenal'}</div>
+                        <small className="text-light opacity-50">{sub.student_nim || '-'}</small>
+                      </td>
+
+                      {/* Submitted time */}
+                      <td className="bg-transparent">
+                        <small className="text-light opacity-75">
+                          <i className="bi bi-clock me-2 opacity-50"></i>{formatDate(sub.submitted_at)}
+                        </small>
+                      </td>
+
+                      {/* File Link & Delete */}
+                      <td className="bg-transparent">
+                        {sub.file ? (
+                          <div className="d-flex align-items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleViewFile(`/api/submission/${sub._id}/download?view=true`)}
+                              className="badge bg-light bg-opacity-25 text-white border border-light border-opacity-25 px-3 py-2 rounded-pill text-decoration-none hover-opacity-100 d-inline-flex align-items-center"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                              <i className="bi bi-file-earmark-text me-2"></i>
+                              {getCleanFilename(sub.file.filename) || 'Buka Berkas'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger btn-sm rounded-circle p-1 d-inline-flex align-items-center justify-content-center"
+                              style={{ width: '28px', height: '28px' }}
+                              title="Hapus Berkas Pengumpulan"
+                              onClick={() => handleDeleteSubmissionFile(sub._id)}
+                            >
+                              <i className="bi bi-trash3" style={{ fontSize: '0.75rem' }}></i>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="badge bg-secondary bg-opacity-25 text-light opacity-50 rounded-pill">Tanpa Berkas</span>
+                        )}
+                      </td>
+
+                      {/* Grade Input */}
+                      <td className="bg-transparent">
+                        <div className="d-flex align-items-center gap-2">
+                          <input
+                            type="number"
+                            className="form-control form-control-sm text-center fw-bold bg-dark text-white border-light border-opacity-25 rounded-3"
+                            value={inputGrades[sub._id] !== undefined ? inputGrades[sub._id] : ''}
+                            onChange={(e) => handleInputChange(sub._id, e.target.value)}
+                            placeholder="0"
+                            min="0"
+                            max="100"
+                            style={{ width: '80px' }}
+                          />
+                          {isGraded && (
+                            <span className="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 rounded-pill px-2 py-1" title="Sudah Dinilai">
+                              <i className="bi bi-check-lg"></i>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Action buttons */}
+                      <td className="px-4 bg-transparent text-end">
+                        <div className="d-flex gap-2 justify-content-end align-items-center">
+                          <button
+                            className={`btn btn-sm ${currentStatus === 'saved' ? 'btn-success' : 'btn-primary'} rounded-3 px-3 fw-bold transition-all`}
+                            onClick={() => handleSaveGrade(sub._id)}
+                            disabled={currentStatus === 'saving'}
+                            title="Simpan Nilai"
+                          >
+                            {currentStatus === 'saving' ? (
+                              <span className="spinner-border spinner-border-sm me-1"></span>
+                            ) : currentStatus === 'saved' ? (
+                              <>
+                                <i className="bi bi-check2 me-1"></i> Tersimpan
+                              </>
+                            ) : (
+                              <>
+                                <i className="bi bi-save me-1"></i> Simpan
+                              </>
+                            )}
+                          </button>
+
+                          <button
+                            className="btn btn-sm btn-outline-light rounded-3 px-3"
+                            onClick={() => openComments(sub)}
+                            title="Diskusi / Komentar"
+                          >
+                            <i className="bi bi-chat-dots-fill"></i>
+                            {sub.comments && sub.comments.length > 0 && (
+                              <span className="badge bg-danger rounded-circle ms-1" style={{ fontSize: '0.65rem' }}>
+                                {sub.comments.length}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
+
+      {/* DISCUSSIONS / COMMENTS DRAWER */}
+      {showOffcanvas && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backdropFilter: 'blur(15px)', backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setShowOffcanvas(false)}>
+          <div className="modal-dialog modal-dialog-centered modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-content glass-card border-light border-opacity-25 shadow-lg rounded-4 overflow-hidden">
+              
+              <div className="modal-header border-bottom border-light border-opacity-10 p-4" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                <h4 className="modal-title fw-bold text-white d-flex align-items-center m-0">
+                  <div className="p-2 rounded-circle me-3 bg-info text-white bg-opacity-25">
+                    <i className="bi bi-chat-dots-fill fs-4"></i>
+                  </div>
+                  Diskusi Tugas — {selectedSubmission?.student_name || 'Mahasiswa'}
+                </h4>
+                <button type="button" className="btn-close btn-close-white opacity-75 hover-opacity-100" onClick={() => setShowOffcanvas(false)}></button>
+              </div>
+
+              <div className="modal-body text-white p-4" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                {selectedSubmission?.comments?.length > 0 ? (
+                  selectedSubmission.comments.map((comment, idx) => (
+                    <div key={idx} className="mb-3">
+                      <div className="d-flex justify-content-between align-items-center mb-1">
+                        <small className="fw-bold text-info">{comment.senderName || "User"}</small>
+                        <small className="text-light opacity-50" style={{ fontSize: '0.7rem' }}>
+                          {comment.createdAt ? new Date(comment.createdAt).toLocaleString("id-ID") : ""}
+                        </small>
+                      </div>
+                      <div className="p-3 rounded-4 bg-light bg-opacity-10 border border-light border-opacity-10 text-white" style={{ whiteSpace: 'pre-wrap' }}>
+                        {comment.text}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-5 text-light opacity-50">
+                    <i className="bi bi-chat-square-text fs-1 d-block mb-3 opacity-50"></i>
+                    Belum ada diskusi atau komentar untuk pengumpulan ini.
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer border-top border-light border-opacity-10 p-4">
+                <div className="d-flex gap-2 w-100">
+                  <input
+                    type="text"
+                    className="form-control bg-dark text-white border-light border-opacity-25 rounded-pill px-4 py-2"
+                    placeholder="Tulis balasan pesan..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendCommentAsdos()}
+                  />
+                  <button
+                    className="btn btn-primary rounded-pill px-4 fw-bold"
+                    onClick={handleSendCommentAsdos}
+                    disabled={!commentText.trim()}
+                  >
+                    <i className="bi bi-send-fill me-1"></i> Kirim
+                  </button>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="text-muted small text-center my-5">
-              <i className="bi bi-chat-square-text fs-1 d-block mb-2 text-light"></i>
-              Belum ada komentar.
+
             </div>
-          )}
+          </div>
         </div>
-
-        <div className="d-flex gap-2 mt-auto p-2 bg-white rounded-3 border shadow-sm">
-          <input
-            type="text"
-            className="form-control border-0 bg-light"
-            placeholder="Balas pesan..."
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSendCommentAsdos()}
-          />
-          <button
-            className="btn btn-primary rounded-circle"
-            style={{ width: "40px", height: "40px", padding: 0 }}
-            onClick={handleSendCommentAsdos}
-            disabled={!commentText.trim()}
-          >
-            <i className="bi bi-send-fill"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div
-      className="offcanvas-backdrop fade show"
-      style={{ zIndex: 1040 }}
-      onClick={() => setShowOffcanvas(false)}
-    ></div>
-  </>
-)}
+      )}
     </div>
   );
 };
