@@ -10,7 +10,7 @@ const Pengumpulan = require('./models/nosql/Pengumpulan');
 
 // Wiping uploads directory safely
 const clearUploads = () => {
-  const uploadDirs = ['materi', 'tugas', 'pengumpulan'];
+  const uploadDirs = ['materials', 'tasks', 'submissions'];
   uploadDirs.forEach(dir => {
     const dirPath = path.join(__dirname, 'uploads', dir);
     if (fs.existsSync(dirPath)) {
@@ -52,7 +52,7 @@ async function seed() {
     console.log('✅ Attendance Statuses seeded.');
 
     console.log('⏳ Seeding Users (Admin, Mahasiswa)...');
-    
+
     // 1 Admin
     const adminPass = await bcrypt.hash('admin123', 10);
     const adminRole = await Role.findOne({ where: { deskripsi: 'admin' } });
@@ -77,7 +77,7 @@ async function seed() {
     console.log('✅ Admin and 5 Mahasiswa users created.');
 
     console.log('⏳ Seeding Praktikum (Classes)...');
-    
+
     // Helper to generate 10 sessions based on system logic
     const generateSessions = async (praktikum, tanggal_mulai, waktu_mulai, waktu_selesai) => {
       const sessions = [];
@@ -124,7 +124,7 @@ async function seed() {
     console.log('✅ Praktikum and 10 weekly sessions per Praktikum generated.');
 
     console.log('⏳ Enrolling Users to Praktikum...');
-    
+
     // Praktikum 1: mhs1 is Asdos, mhs2-mhs5 are Mahasiswa
     await PraktikumUserRole.create({ id_user: mhsUsers[0].id_user, id_role: asdosRole.id_role, id_praktikum: p1.id_praktikum });
     for (let i = 1; i < 5; i++) {
@@ -137,7 +137,7 @@ async function seed() {
     for (let i = 2; i < 5; i++) {
       await PraktikumUserRole.create({ id_user: mhsUsers[i].id_user, id_role: mhsRole.id_role, id_praktikum: p2.id_praktikum });
     }
-    
+
     console.log('✅ Users enrolled contextually (Asdos and Mahasiswa).');
 
     console.log('🎉 Seeding completed successfully!');
